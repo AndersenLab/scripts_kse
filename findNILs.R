@@ -16,7 +16,7 @@ findNILs <- function(input) {
     library(linkagemapping)
     
     # Source nil genotype file
-    source("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/scripts/NIL_genotype_plots.R")
+    source("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/scripts_kse/NIL_genotype_plots.R")
     
     # Get chromosome region
     chr <- stringr::str_split_fixed(input, ":", 2)[1]

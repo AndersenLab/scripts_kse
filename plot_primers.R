@@ -13,24 +13,7 @@ primers <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1LJFZZ4dZm9KnoTpZq
 
 # load genotypes
 #load nilgenos
-nilgeno1 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20170829/vcf/gt_hmm_fill.tsv") %>%
-    dplyr::mutate(gt_name = ifelse(gt == 1, "N2", "CB4856")) %>%
-    dplyr::select(chrom, start, end, sample, gt, gt_name, supporting_sites, sites, DP, switches)
-nilgeno2 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20170128/hmm/gt_hmm_fill.tsv") %>%
-    dplyr::mutate(gt_name = ifelse(gt == 1, "N2", "CB4856")) %>%
-    dplyr::select(chrom, start, end, sample, gt, gt_name, supporting_sites, sites, DP, switches)
-nilgeno3 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20171212/hmm/gt_hmm_fill.tsv") %>%
-    dplyr::select(-rle)
-nilgeno4 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20180409/hmm/gt_hmm_fill.tsv") %>%
-    dplyr::select(-rle)
-nilgeno5 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20180626/hmm/gt_hmm_fill.tsv") %>%
-    dplyr::select(-rle)
-nilgeno6 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20181016/hmm/gt_hmm_fill.tsv") %>%
-    dplyr::select(-rle)
-N2_CB_geno <- read.csv("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/HTA_sorter/N2_CB_geno.csv")  %>%
-    dplyr::mutate(gt_name = ifelse(gt == 1, "N2", "CB4856")) %>%
-    dplyr::select(chrom, start, end, sample, gt, gt_name, supporting_sites, sites, DP, switches)
-nilgeno <- rbind(nilgeno1, nilgeno2, nilgeno3, nilgeno4, nilgeno5, nilgeno6, N2_CB_geno)
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/nilgeno.Rda")
 
 # function
 # primer pairs - pair of primers in the format "oECAXXX-oECAXXX", can be multiple
@@ -43,7 +26,7 @@ plot_primers <- function(primer_pairs, NIL = "N2", RIL = F, chr = c("I", "II", "
         dplyr::filter(pair %in% primer_pairs | pair2 %in% primer_pairs)
     
     if(RIL == T) {
-        source("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/scripts/RIL_genotype_plots.R")
+        source("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/scripts_kse/RIL_genotype_plots.R")
         df <- rilgeno
     } else {
         df <- nilgeno
