@@ -1,0 +1,40 @@
+
+### `r t`
+```{r, fig.width=12, fig.height = 7}
+# Plot LOD 
+trt <- strsplit(t, paste0(cond, "."))[[1]][2]
+df <- map %>%
+    dplyr::filter(trait == t)
+lod <- plot_grid(maxlodplot_kt(df), pxgplot_kt(phenocross, df %>% dplyr::filter(chr == chrom)), rel_widths = c(3, 1))
+
+# Get confidence intervals for plotting
+cis <- map %>% 
+    dplyr::filter(trait == t, chr == chrom, ci_r_pos < nil_bound[2], ci_l_pos > nil_bound[1]) %>%
+    na.omit() %>%
+    distinct(ci_l_pos, ci_r_pos, .keep_all = T)
+
+# Plot NIL genotypes
+nilgeno_plot <- nil_plot(unique(regressed$strain), 
+                    left.bound = nil_bound[1], right.bound = nil_bound[2], chr = chrom)
+
+regressed$strain <- factor(regressed$strain, levels = unique(nilgeno_plot[[2]]$sample), 
+                           labels = unique(nilgeno_plot[[2]]$sample), ordered = T)
+
+pruned$strain <- factor(pruned$strain, levels = unique(nilgeno_plot[[2]]$sample), 
+                           labels = unique(nilgeno_plot[[2]]$sample), ordered = T)
+plot <- nilgeno_plot[[1]] + 
+    geom_vline(xintercept = c(unique(cis$ci_l_pos)/1e6, unique(cis$ci_r_pos)/1e6), color = "red") +
+    geom_vline(xintercept = unique(cis$pos)/1e6, color = "cyan")
+
+# Plot NIL phenotypes in control
+nil_control <- quick_plot_breakup_flip(pruned, control, trt)
+
+# Plot NIL phenotypes in condition
+nil <- plot_grid(plot, quick_plot_breakup_flip(regressed, cond, trt), quick_plot_breakup_flip(pruned, control, trt),
+                 nrow = 1, ncol = 3)
+
+print(plot_grid(lod, nil, ncol = 1, nrow = 2, rel_heights = c(2,3.5)))
+
+
+```
+

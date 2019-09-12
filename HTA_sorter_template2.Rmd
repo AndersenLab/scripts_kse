@@ -1,0 +1,49 @@
+
+### `r t`
+```{r, fig.width=15, fig.height = 11}
+# Plot LOD 
+trt <- strsplit(t, paste0(cond, "."))[[1]][2]
+df <- map %>%
+    dplyr::filter(trait == t)
+# lod <- plot_grid(maxlodplot_kt(df), pxgplot_kt(phenocross, df %>% dplyr::filter(chr == chrom)), rel_widths = c(3, 1))
+lod <- maxlodplot_kt(df)
+ril <- pxgplot_par_kt(cross = phenocross, map = df, parpheno = parents %>% dplyr::filter(trait == trt))
+lodril <- cowplot::plot_grid(lod, ril, nrow = 2, ncol = 1)
+
+# Get confidence intervals for plotting
+cis <- map %>% 
+    dplyr::filter(trait == t, chr == chrom, ci_r_pos < nil_bound[2], ci_l_pos > nil_bound[1]) %>%
+    na.omit() %>%
+    distinct(ci_l_pos, ci_r_pos, .keep_all = T)
+
+# Plot NIL genotypes
+nilgeno_plot <- nil_plot(unique(regressed$strain), 
+                    left.bound = nil_bound[1], 
+                    right.bound = nil_bound[2], 
+                    chr = chrom, 
+                    background = T, 
+                    ci = c(unique(cis$ci_l_pos)/1e6, unique(cis$ci_r_pos)/1e6))
+
+regressed$strain <- factor(regressed$strain, levels = unique(nilgeno_plot[[2]]$sample), 
+                           labels = unique(nilgeno_plot[[2]]$sample), ordered = T)
+
+pruned$strain <- factor(pruned$strain, levels = unique(nilgeno_plot[[2]]$sample), 
+                           labels = unique(nilgeno_plot[[2]]$sample), ordered = T)
+
+plot <- nilgeno_plot[[1]]
+
+# Plot NIL phenotypes in control
+nil_control <- quick_plot_breakup_flip(pruned, control, trt) + facet_grid(~trait)
+
+nil_pruned <- quick_plot_breakup_flip(pruned, cond, trt) + facet_grid(~trait)
+
+# Plot NIL phenotypes in condition-
+nil <- plot_grid(plot, quick_plot_breakup_flip(regressed, cond, trt) + facet_grid(~trait), nil_pruned, nil_control, nrow = 1, ncol = 4)
+
+# print(cowplot::plot_grid(lodril, nil, ncol = 1, nrow = 2, rel_heights = c(2,3.5)))
+print(cowplot::plot_grid(lodril, nil, ncol = 1, nrow = 2))
+
+
+
+```
+
