@@ -4,15 +4,11 @@
 library(cegwas2)
 library(dplyr)
 
+
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_descriptions_WS273.Rda")
+
 #Define function to narrow QTL for given region of interest
 qtl_narrow <- function(query, sev = c("MODERATE", "HIGH")) {
-  #load gene info
-  # load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/genome/wbgenes.Rda")
-    goterm <- read_tsv("~/Dropbox/AndersenLab/LabFolders/Katie/projects/genome/GOannotations.tsv", col_names = FALSE)
-    names(goterm) <- c("GO_annotation_extension", "GO_annotation_qualifier", "Data_set", "Data_set_URL", "Evidence_w_text", "Ontology_term_identifier",
-                     "Ontology_term_name", "Ontology_term_description", "Subject_wormbase_ID")
-    goterm <- goterm %>%
-        dplyr::select(Ontology_term_identifier:Subject_wormbase_ID)
   
   # snpeff <- cegwas::snpeff(query)
   snpeff <- cegwas2::query_vcf(query, impact = sev, samples = "CB4856")
@@ -26,9 +22,9 @@ qtl_narrow <- function(query, sev = c("MODERATE", "HIGH")) {
   
   #Add GO Terms and descriptions
   df <- snpf %>%
-    select(CHROM, POS, strain = SAMPLE, REF, ALT, a1, a2, GT, query, allele, effect, impact, gene_name, gene_id, feature_type, 
+    dplyr::select(CHROM, POS, strain = SAMPLE, REF, ALT, a1, a2, GT, query, allele, effect, impact, gene_name, gene_id, feature_type, 
            feature_id, transcript_biotype, nt_change, aa_change) %>%
-    left_join(goterm, by = c("gene_id" = "Subject_wormbase_ID"))
+    dplyr::left_join(gene_descriptions, by = c("gene_id" = "wbgene"))
   
   return(df)
 }
