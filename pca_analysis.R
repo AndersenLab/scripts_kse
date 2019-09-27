@@ -2,7 +2,7 @@ library(tidyverse)
 library(linkagemapping)
 
 # returns a list of (1) pca object and (2) pca phenotypes
-calc_pc2 <- function(pheno) {
+calc_pc_reps <- function(pheno) {
     # calculate PC for linkage
     pc_traits <- pheno %>%
         dplyr::mutate(drugtrait = paste0(condition, ".", trait)) %>%
@@ -39,20 +39,21 @@ calc_pc2 <- function(pheno) {
     
     PCpheno <- data.frame(pca_obj$scores[,1:keep]) %>%
         dplyr::mutate(well = rownames(.)) %>%
-        tidyr::separate(well, into = c("assay", "round", "plate", "row", "col", "strain"), by = "-") %>%
+        tidyr::separate(well, into = c("assay", "round", "plate", "row", "col", "strain"), sep = "-") %>%
         tidyr::gather(trait, phenotype, -c(assay:strain)) %>%
         dplyr::mutate(trait = gsub("Comp.", "PC", trait),
                       phenotype = phenotype) %>%
         dplyr::mutate(condition = stringr::str_split_fixed(trait, "_", 2)[,1],
                       trait = stringr::str_split_fixed(trait, "_", 2)[,2]) %>%
-        # tidyr::separate(trait, into = c("condition", "trait2"), by = "_") %>% # I get an error on cisplatin.250_PC1...?
-        dplyr::mutate(phenotype = as.numeric(phenotype))
+        dplyr::mutate(phenotype = as.numeric(phenotype),
+                      round = as.numeric(round),
+                      plate = as.numeric(plate))
     
     return(list(pca_obj, PCpheno))
 }
 
 # returns a list of (1) pca object and (2) pca phenotypes
-calc_pc <- function(pheno) {
+calc_pc_noreps <- function(pheno) {
     # calculate PC for linkage
     pc_traits <- pheno %>%
         dplyr::mutate(drugtrait = paste0(condition, ".", trait)) %>%
