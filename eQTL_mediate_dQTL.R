@@ -8,7 +8,7 @@ library(mediation)
 load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/eQTL_mediation/data/raw/N2xCB4856cross_full2.Rda")
 expression_pheno <- read_tsv("~/Dropbox/AndersenLab/LabFolders/Katie/projects/eQTL_mediation/data/raw/expression_phenos.tsv")
 
-eQTL_mediate_dQTL <- function(peak, probe, phenodf, scaled = T) {
+eQTL_mediate_dQTL <- function(peak, probe, phenodf, scaled = T, lm = TRUE) {
     
     # get the genotype at the peak marker
     newpeak <- gsub(":", "_", peak)
@@ -35,29 +35,34 @@ eQTL_mediate_dQTL <- function(peak, probe, phenodf, scaled = T) {
         dplyr::left_join(geno, by = "strain") %>%
         na.omit()
     
-    ### LINEAR MODELS ###
+    if(lm) {
+        ### LINEAR MODELS ###
+        
+        # total effect = geno estimate
+        model.g <- lm(phenotype ~ geno, data = pheno)
+        total <- data.frame(var = "total",
+                            estimate = summary(model.g)$coef[2,1],
+                            pval = summary(model.g)$coef[2,4])
+        
+        # direct effect = geno estimate
+        model.y <- lm(phenotype ~ expression + geno, data = pheno)
+        direct <- data.frame(var = "direct",
+                             estimate = summary(model.y)$coef[3,1],
+                             pval = summary(model.y)$coef[3,4])
+        
+        # mediation effect = expression estimate
+        med <- data.frame(var = "med",
+                          estimate = summary(model.y)$coef[2,1],
+                          pval = summary(model.y)$coef[2,4])
+        
+        # mediation proportion = total - direct / total
+        out <- rbind(total, direct, med)
+    } else {
+        model.m <- lm(expression ~ geno, data = pheno)
+        model.y <- lm(phenotype ~ expression + geno, data = pheno)
+        out <- mediation::mediate(model.m, model.y, sims = 1000, boot = T, treat = "geno", mediator = "expression")
+    }
     
-    # total effect = geno estimate
-    model.g <- lm(phenotype ~ geno, data = pheno)
-    total <- data.frame(var = "total",
-                      estimate = summary(model.g)$coef[2,1],
-                      pval = summary(model.g)$coef[2,4])
- 
-    # direct effect = geno estimate
-    model.y <- lm(phenotype ~ expression + geno, data = pheno)
-    direct <- data.frame(var = "direct",
-                      estimate = summary(model.y)$coef[3,1],
-                      pval = summary(model.y)$coef[3,4])
-    
-    # mediation effect = expression estimate
-    med <- data.frame(var = "med",
-                      estimate = summary(model.y)$coef[2,1],
-                      pval = summary(model.y)$coef[2,4])
-    
-    # mediation proportion = total - direct / total
-    out <- rbind(total, direct, med)
-    
-    # out <- mediation::mediate(model.m, model.y, sims = 1000, boot = F, treat = "geno", mediator = "expression")
     return(out)
 }
 

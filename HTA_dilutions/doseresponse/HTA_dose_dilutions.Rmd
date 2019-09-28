@@ -1,0 +1,286 @@
+---
+params:
+  set_title: !r outputname
+title: "`r params$set_title`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# this code was adapted from the original dilution code written by Tyler/Erik located at ~/Dropbox/HTA/Dilutions/2014_doseresponses/Dilutions2....R
+library(knitr)
+library(tidyverse)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'asis')
+knitr::opts_knit$set(progress = FALSE)
+
+
+```
+
+```{r}
+
+# crude calculation of number of plates and total lysate/kan needed for assay
+numplate <- sum(curves$Plates)
+plates <- paste0("Need ", numplate, " plates.")
+lys <- 1300*5*numplate / 1000
+tubes <- ceiling(lys / 10)
+lysate_mix <- paste0("Total lysate mix needed: ", lys, " mL, actually make: ", tubes*10, " mL.")
+lysate_tubes <- paste0("Number of lysate tubes needed: ", tubes)
+lysate_K <- paste0("Add ", tubes*9, " mL of K medium to lysate.")
+kan <- paste0("Add ", 50*tubes*10*1000/80000, " uL of kanamycin to lysate mix.")
+
+#Function to make set of necessary dilutions 
+makeDilute <- function(dilutions, stock, volume){
+    #ste the total volume needed
+    ul <- c()
+    #Caluculate the dilution for each of the requested dilutions
+    for (i in 1:length(dilutions)){
+        ul[i] <- dilutions[i]/stock*volume
+    }
+    
+    # The amount of solvent should be 1% of total volume
+    solv <- c()
+    for (i in 1:length(dilutions)){
+        # solv[i] <- volume - ul[i] - lysate
+        solv[i] <- volume*0.01 - ul[i]
+    }
+    
+    #Make a data frame of the type of solvent used (DMSO, water, etc.), the final concentrations, the amount of stock drug/compound solution to added in uL, and the total amount of lysate added for that dilution step
+    # df <- cbind(solvent, dilutions, solv, ul, lysate2)
+    df <- cbind(solvent, dilutions, solv, ul)
+}
+
+#Initialize 
+out <- NULL
+drug_dilutions <- data.frame(drug = NA, diluent = NA, fold = NA, drug_amt = NA, dil_amt = NA, drug_tube = NA)
+
+for (i in 1:nrow(curves)){
+    #Pull compound and solvent info from csv
+    compound <- as.character(curves$Drug[i])
+    solvent <- as.character(curves$Diluent[i])
+    reps <- as.numeric(as.character(curves$Plates[i]))
+    
+    
+    # stockmake = "Already made"
+    stock1 <- as.numeric(curves$Working[i])*1000
+    
+    #Read in the dilution curves and save as a numeric vector
+    dilutes <- as.numeric(unlist(strsplit(gsub(" ", "", curves$Dose_concentrations[i]), ",")))
+    
+    #This section checks a series of ten-fold dilutions to see which stock concentration is most effecient at creating a dilution curve that is "pipettable" (not pipetting less than .5 ul), and not above 1% diluent so as to control for diluent effects
+    tenfolds <- c(stock1/10000, stock1/1000, stock1/100, stock1/10, stock1)
+    count = c()
+    for (j in 1:length(tenfolds)) {
+        #Create a recipe data frame for each of the 10 fold dilutions listed above
+        recipe <- as.data.frame(makeDilute(dilutes,tenfolds[j], 1200*reps))
+        #Count the total dilution amounts and check how many fall in our magic range of 0.5<x<12, 12 is 1% of the 1200 uL volume we are making up
+        count[j] <- sum(as.numeric(as.character(recipe$ul)) >=.5 & as.numeric(as.character(recipe$ul)) <= (1200*reps)/100)
+    }
+    #Check if all of the counts are zero, if this is true, you cannot make of the dilutions with the stock concentration you already have
+    if (all(count == 0L) == TRUE){
+        #Sets brake variable equal to TRUE, this is used in the markdown file to tell us that our stock is not concentrated enough for this curve
+        brake = TRUE
+    } else {
+        brake = FALSE
+    }
+    #Determine which dilution has the highest number of dilutions that can be made
+    index <- which(count == max(count))
+    stock2 <- tenfolds[index]
+    #If multiple stocks can make the same number of dilutions, take the lower concentration stock, this is arbitrary, as anyone could be used. However, using the lowest working stock controls pretty well for only needing to use a higher stock later on.
+    stock2 <- stock2[1]
+    
+    #If the stock you need is more dilute than the one you have, this will tell you how to dilute the one you have
+    if (stock2 != stock1){
+        stockdilution <- stock1/stock2
+        stockmake <- paste0("You must make a ", stock1/stock2, "-fold dilution of the ", stock1/1000, " mM stock that is already made.")
+    } else {
+        stockdilution <- 0
+        stockmake <- paste0("You do not need to dilute the ", stock1/1000, " mM stock that is already made.")
+    }
+    
+    #Make the recipe
+    recipe <- as.data.frame(makeDilute(dilutes,stock2, 1200*reps))
+    
+    goodrows <- c()
+    tooHigh <- c()
+    #Check which rows have under 1% diluent and which have over
+    for (k in 1:nrow(recipe)){
+        if (as.numeric(as.character(recipe$ul[k])) <= (1200*reps)/100 | as.numeric(as.character(recipe$ul[k])) == 0){
+            goodrows <- append(goodrows, as.numeric(k))
+        }
+        if (as.numeric(as.character(recipe$ul[k])) > (1200*reps)/100){
+            tooHigh <- append(tooHigh, as.numeric(k))
+        }
+    }
+    
+    #Separate the rows
+    high <- recipe[tooHigh,]
+    recipe <- recipe[goodrows,]
+    
+    #Get the concentrations that don't fall under 1%
+    higherConcs <- as.numeric(as.character(high$dilutions))
+    
+    #Check if you have concentrations that don't fall under 1%
+    if (length(higherConcs) > 0){
+        higherStocks <- c()
+        currentStock <- stock2
+        #For every step between your working stock and concentrated stock, ceoncetrate 10-fold
+        while (currentStock <= stock1){
+            higherStocks <- append(higherStocks, currentStock)
+            currentStock <- currentStock*10
+        }
+        #For each of the higher concentrated stocks, see if all of the more concentrated solutions fall in the magic range
+        workStocks <- c()
+        for (l in 1:length(higherStocks)){
+            highRecipe <- as.data.frame(makeDilute(higherConcs, higherStocks[l], 1200*reps))
+            highRecipe$solvent <- as.character(highRecipe$solvent)
+            highRecipe$dilutions <- as.numeric(as.character(highRecipe$dilutions))
+            highRecipe$solv <- as.numeric(as.character(highRecipe$solv))
+            highRecipe$ul <- as.numeric(as.character(highRecipe$ul))
+            
+            if (all(highRecipe$ul >= .5) & all(highRecipe$ul <= (1200*reps)/100)){
+                workStocks <- append(workStocks, higherStocks[l])
+            }
+        }
+        
+        #Of the working stocks (ones that fit the above criteria), take the most dilute
+        finalHigherStock <- min(workStocks)
+        
+        #Make the recipe for the higher concentrations
+        highRecipe <- as.data.frame(makeDilute(higherConcs, finalHigherStock, 1200*reps))
+        for(row in 1:nrow(highRecipe)){
+            for(j in 2:length(highRecipe)){
+                highRecipe[row,j] = as.numeric(as.character(highRecipe[row,j]))
+            }
+        }
+    }
+    
+    #Data frame finalization for recipe
+    # lysate is always going to be 1200 - 12 to keep the solvent at 1%
+    recipe$lysate <- (1200*reps) - (1200*reps) / 100
+    recipe$ul <- as.numeric(as.character(recipe$ul))
+    recipe <- recipe %>%
+        dplyr::select("Diluent" = solvent, "Lysate (uL)" = lysate, "Concentration (uM)" = dilutions, "Diluent (uL)" = solv, "Drug (uL)" = ul)
+
+    # truncate to two decimals in recipe
+    recipe$`Diluent (uL)` <- as.numeric(as.character(recipe$`Diluent (uL)`))
+    recipe$`Diluent (uL)` <- round(recipe$`Diluent (uL)`, digits = 2)
+    recipe$`Drug (uL)` <- round(recipe$`Drug (uL)`, digits = 2)
+    
+    # calculate how much drug you need to know how many tubes of drug to get out of the freezer
+    lowdrug <- sum(recipe$`Drug (uL)`)
+    
+    #Finalize the data frame for the recipe requiring the higher concentration stock
+    highdrug <- 0
+    if(exists("highRecipe")){
+        # lysate is always going to be 1200 - 12 to keep the solvent at 1%
+        highRecipe$lysate <- (1200*numplate) - (1200*numplate) / 100
+        highRecipe$ul <- as.numeric(as.character(highRecipe$ul))
+        highRecipe <- highRecipe %>%
+            dplyr::select("Diluent" = solvent, "Lysate (uL)" = lysate, "Concentration (uM)" = dilutions, "Diluent (uL)" = solv, "Drug (uL)" = ul)
+        
+        # truncate to two decimals in highRecipe
+        highRecipe$`Diluent (uL)` <- as.numeric(as.character(highRecipe$`Diluent (uL)`))
+        highRecipe$`Diluent (uL)` <- round(highRecipe$`Diluent (uL)`, digits = 2)
+        highRecipe$`Drug (uL)` <- round(highRecipe$`Drug (uL)`, digits = 2)
+        
+        highdrug <- sum(highRecipe$`Drug (uL)`)
+    }
+    
+    # drug dilutions, if needed
+    if(stockdilution == 0) {
+        folddil <- NA
+        drugamt <- NA
+        dilamt <- NA
+    } else {
+        folddil <- paste0("1:", stockdilution)
+        drugamt <- ceiling(lowdrug/stockdilution)
+        dilamt <- ceiling(lowdrug/stockdilution)*stockdilution - ceiling(lowdrug/stockdilution)
+        drug_dilutions <- drug_dilutions %>%
+            dplyr::ungroup()
+    
+        drug_dilutions <- rbind(drug_dilutions, c(compound, recipe$Diluent[1], folddil, drugamt, dilamt, NA))
+    }
+    
+
+    # If there is a highRecipe, we need two different drug dilutions
+    if(exists("highRecipe")) {
+        if(finalHigherStock/1000 == stock1) {
+            folddil <- "Undiluted"
+            drugamt <- highdrug
+            dilamt <- NA
+        } else {
+            folddil <- paste0("1:", stock1/finalHigherStock)
+            drugamt <- ceiling(highdrug/stock1/finalHigherStock)
+            dilamt <- ceiling(highdrug/stock1/finalHigherStock)*(stock1/finalHigherStock) - ceiling(highdrug/(stock1/finalHigherStock))
+        }
+        drug_dilutions <- rbind(drug_dilutions, c(compound, recipe$Diluent[1], folddil, drugamt, dilamt, NA))
+    }
+    
+    # calculate number of tubes
+    if(grepl("low", compound)) {
+        d <- stringr::str_split_fixed(compound, "-low", 2)[1]
+    } else if(grepl("high", compound)) {
+        d <- stringr::str_split_fixed(compound, "-high", 2)[1]
+    } else {
+        d <- compound
+    }
+    
+    tube_aliquot <- aliquotAmt %>%
+        dplyr::filter(drug == d)
+    if(nrow(tube_aliquot) > 0) {
+        aliquots <- tube_aliquot$aliquotAmt
+    } else {
+        aliquots <- NA
+    }
+    drug_dilutions <- drug_dilutions %>%
+        tidyr::drop_na(drug) %>%
+        dplyr::group_by(drug) %>%
+        dplyr::mutate(drug_amt = as.numeric(drug_amt),
+                      total_drug = sum(drug_amt),
+                      drug_tube = ifelse(total_drug %% aliquots == 0, ceiling(total_drug / aliquots) + 1, 
+                                         ceiling(total_drug / aliquots)))
+    
+    
+    # knit markdown file
+    out = c(out, knit_child("~/Dropbox/AndersenLab/RCode/HTA_dilutions/doseresponse/dose_dilutions.Rmd"))
+    if(exists("highRecipe")) {
+        rm(highRecipe)
+    }
+    
+}
+
+```
+
+# Setup Lysate
+```{r}
+
+print(plates)
+cat('\n')
+print(lysate_mix)
+cat('\n')
+print(lysate_tubes)
+cat('\n')
+print(lysate_K)
+cat('\n')
+print(kan)
+cat('\n')
+
+```
+
+# Drug Dilutions
+```{r}
+
+if(stockdilution != 0) {
+    knitr::kable(drug_dilutions, row.names = FALSE)
+} else {
+    print(stockmake)
+}
+
+cat('\n')
+cat("\n\n\\pagebreak\n")
+
+```
+
+
+`r paste(knit(text = out), collapse = '\n')`
+

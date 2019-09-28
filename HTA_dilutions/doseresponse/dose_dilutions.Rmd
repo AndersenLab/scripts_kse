@@ -1,0 +1,48 @@
+
+# Dilution Sheet for `r compound`
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'asis')
+knitr::opts_knit$set(progress = FALSE)
+
+```
+
+### Make concentrated stock solution
+
+```{r, echo = FALSE}
+stockmake
+
+if(stockdilution != 0) {
+    knitr::kable(drug_dilutions %>% 
+                 dplyr::filter(drug == compound)  %>%
+        dplyr::select('Drug' = drug, 'Diluent' = diluent, 'Fold-dilution' = fold, 'Drug (uL)' = drug_amt, 'Diluent (uL)' = dil_amt, 'Tubes' = drug_tube), row.names = FALSE)
+}
+
+
+```
+
+### Dilute down to final concentrations (**use `r stock2/1000` mM stock**):
+
+```{r, echo = FALSE}
+if (brake == TRUE){
+    print("The stock dilution is not concentrated enough.")
+}
+if (brake == FALSE){
+    print(knitr::kable(recipe))
+}
+```
+
+### Use higher stock (if necessary):
+
+```{r, echo = FALSE}
+if (exists("highRecipe")){
+    print(paste0("Use ", finalHigherStock/1000, " mM stock."))
+    print(knitr::kable(highRecipe))
+} else {
+    print("Not necessary")
+}
+
+cat('\n')
+cat("\n\n\\pagebreak\n")
+```
+
+

@@ -1,0 +1,54 @@
+---
+output: pdf_document
+params:
+  set_title: !r outputname
+title: "`r params$set_title`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+geometry: margin=0.75in
+mainfont: Times New Roman
+---
+
+#Setup Lysate
+```{r, echo= F, message = F, warning = F, results = 'asis'}
+print(paste("Version:", version))
+cat('\n')
+print(plates)
+cat('\n')
+print(lysate_mix)
+cat('\n')
+print(lysate_tubes)
+cat('\n')
+print(lysate_K)
+cat('\n')
+print(kan)
+cat('\n')
+```
+
+#Drug Dilutions
+
+```{r, echo= F, message = F, warning = F, results = 'asis', fig.align='left'}
+cat('\n')
+if(nrow(drug_dilution) != 0) {
+    print(knitr::kable(drug_dilution, format = "markdown"))
+} else {
+    print("Do not need to dilute any drugs.")
+}
+
+cat('\n')
+    
+if(!is.null(special)){
+  print(special)
+}
+
+```
+
+#Plate Dilutions
+
+```{r, echo= F, message = F, warning = F, results = 'asis'}
+cat('\n')
+
+print(knitr::kable(plate_dilution, format = "markdown"))
+
+
+```
+
