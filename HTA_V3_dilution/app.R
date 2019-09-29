@@ -1,0 +1,302 @@
+
+library(shiny)
+library(shinythemes)
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+   
+    theme = shinythemes::shinytheme('yeti'),
+    
+    # Application title
+    titlePanel("HTA Dilutions App"),
+    
+    # sidebar layout
+    sidebarLayout(
+        sidebarPanel(
+            
+            h2("Setup"),
+            
+            # V2 or V3 assay
+            shiny::radioButtons(inputId = "version", label = "HTA Version:", choiceNames = c("v2 (96h)", "v3 (48h)"), choiceValues = c("v2", "v3"), inline = T),
+            
+            # dose response? Default is false
+            shiny::checkboxInput(inputId = "dose", label = "Dose response?", value = F),
+            
+            # minimum pipette volume
+            shiny::numericInput(inputId = "min", label = "Minimum volume to pipette:", value = 0.5, min = 0, max = NA),
+            
+            # choose number of drugs
+            shiny::numericInput(inputId = "drugs", label = "Number of drugs:", value = 1, min = 1, max = NA),
+            
+            # go button
+            shiny::actionButton(inputId = "go", label = "Setup Complete")
+            
+            
+        ),
+        
+        mainPanel(
+            
+            # create tabs
+            tabsetPanel(type = "tabs",
+                        tabPanel("setup",
+                                 tagList(
+                                     # based on number of drugs, allow input information for drug, condition, control, dose, plates, etc.
+                                     shiny::uiOutput("setup"),
+                                     
+                                     # add action button
+                                     shiny::actionButton(inputId = "drug_done", label = "Calculate")
+                                
+                                 )),
+                        tabPanel("dilutions",
+                                 tagList(
+                                     # lysate setup
+                                     shiny::uiOutput("lysate_setup"),
+                                     
+                                     # drug dilutions
+                                     h2("Drug Dilutions"),
+                                     shiny::tableOutput("drugdilutions"),
+                                     br(),
+                                     
+                                     # dilutions dataframe
+                                     h2("Plate Dilutions"),
+                                     shiny::tableOutput("dilutions")
+                                 )))
+
+        )
+    )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+    
+    # when go button is pushed, do this
+    shiny::observeEvent(input$go, {
+        setup_plates()
+    })
+    
+    # setup plates
+    setup_plates <- reactive({
+        
+        # how many drugs?
+        numdrugs <- input$drugs
+        
+        # allow user to input controls
+        output$setup <- shiny::renderUI({
+            
+            # update when button is pushed
+            input$go
+            
+            lapply(1:numdrugs, function(i) {
+                inputPanel(
+                    tagList(
+                        h2(glue::glue("Drug {i}")),
+                        
+                        # drug name
+                        shiny::textInput(inputId = glue::glue("drug_name{i}"), label = "Drug:", value = NA),
+                        
+                        # drug stock concentration
+                        shiny::numericInput(inputId = glue::glue("drug_stock{i}"), label = "Drug stock concentration (mM):", min = 0, value = NA),
+                        
+                        # diluent
+                        shiny::radioButtons(inputId = glue::glue("control_name{i}"), label = "Control:", choices = c("DMSO", "Water")),
+                        
+                        # multiple concentrations if dose
+                        
+                        #     # drug concentration
+                        #     shiny::textInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentrations (uM):"),
+                        # } else {
+                            # drug concentration
+                            shiny::numericInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentration (uM):", min = 0, value = NA),
+                        # }
+
+                        # number of plates
+                        shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
+                        
+                        # number of control plates
+                        shiny::numericInput(inputId = glue::glue("controlplates{i}"), label = "Number of control plates:", min = 1, value = 1),
+                        
+                        # number of wells per condition per plate
+                        shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 96)
+                    )
+                )
+            })
+        })
+    })
+    
+    
+    # when go button is pushed, do this
+    shiny::observeEvent(input$drug_done, {
+        dosetable <- calculate_dose()
+        
+        # output dataframe
+        output$dilutions <- renderTable({
+            dosetable[[1]]
+        })
+        
+    })
+    
+    # calculate dose of drugs
+    calculate_dose <- reactive({
+        
+        # how many drugs?
+        numdrugs <- input$drugs
+        
+        df <- NULL
+        for(i in 1:numdrugs) {
+            df2 <- data.frame(
+                drug = input[[glue::glue("drug_name{i}")]],
+                drugstock = input[[glue::glue("drug_stock{i}")]],
+                diluent = input[[glue::glue("control_name{i}")]],
+                wellconc = input[[glue::glue("drug_dose{i}")]],
+                version = input$version,
+                drugplates = input[[glue::glue("drugplates{i}")]],
+                controlplates = input[[glue::glue("controlplates{i}")]],
+                wells = input[[glue::glue("wells{i}")]],
+                intconc = input[[glue::glue("drug_stock{i}")]]
+            )
+            df <- rbind(df, df2)
+        }
+
+        dose <- df %>%
+            dplyr::mutate(version = as.character(version),
+                          workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                          total_volume = ifelse(version == "v2", 
+                                                drugplates*wells*50*1.1,
+                                                drugplates*wells*25*1.1),
+                          lysate = 0.99*total_volume,
+                          drug_ul = workingconc*total_volume/(intconc*1000),
+                          drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                          dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                          dil_ul = (0.01*total_volume) - drug_ul,
+                          control_drug_ul = 0,
+                          control_dil_ul = 0.01*total_volume)
+        
+        # Check to make sure dilution is enough, should not pipette less than the minimum amount
+        min <- input$min
+        tooSmall <- dose %>%
+            dplyr::filter(drug_ul < min, drug_ul > 0)
+        dose2 <- dose
+        
+        while(nrow(tooSmall) > 0) {
+            dose2 <- dose2 %>%
+                dplyr::select(names(df))
+            oldconcs <- dose2 %>%
+                dplyr::filter(!(drug %in% unique(tooSmall$drug)))
+            concs2 <- dose2 %>%
+                dplyr::filter(drug %in% unique(tooSmall$drug)) %>%
+                dplyr::mutate(intconc = intconc / 10)
+            newconcs <- rbind(oldconcs, concs2)
+            
+            dose2 <- newconcs %>%
+                dplyr::mutate(version = as.character(version),
+                              workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                              total_volume = ifelse(version == "v2", 
+                                                    drugplates*wells*50*1.1,
+                                                    drugplates*wells*25*1.1),
+                              lysate = 0.99*total_volume,
+                              drug_ul = workingconc*total_volume/(intconc*1000),
+                              dil_ul = (0.01*total_volume) - drug_ul,
+                              drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                              dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                              control_drug_ul = 0,
+                              control_dil_ul = 0.01*total_volume)
+            
+            tooSmall <- dose2 %>%
+                dplyr::filter(drug_ul < min, drug_ul > 0)
+        }
+        
+        dose <- dose2
+        
+        drugdilute <- dose %>%
+            dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
+                          dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
+            dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution) %>%
+            dplyr::distinct() 
+        
+        drugplate <- dose %>%
+            dplyr::select(condition = drug, diluent, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+            dplyr::mutate(concentration = as.character(concentration))
+        
+        controlplate <- dose %>%
+            dplyr::select(condition = diluent, diluent, concentration = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
+            dplyr::mutate(diluent = "None",
+                          concentration = "1%")
+        
+        allplates <- drugplate %>%
+            dplyr::full_join(controlplate)
+        
+        # calculate lysate needs
+        plates <- sum(dose$drugplates) + sum(dose$controlplates)
+        
+        # lysate
+        if(input$version == "v2") {
+            # make 10 mg/mL for 96 hours
+            #If lysate is exact, add another tube
+            lysate <- sum(allplates$lysate)
+            if((lysate %% 10000) == 0) {
+                lysate <- lysate + 10000
+            }
+            
+            lysate_mix <- (paste0("Total lysate mix needed: ", lysate / 1000, " mL (10 mg/mL), actually make: ", ceiling(lysate / 10000)*10, " mL"))
+            lysate_tubes <- (paste0("Number of lysate tubes needed: ", ceiling(lysate / 10000)))
+            lysate <- ceiling(lysate / 10000) *10000
+            lysate_K <- (paste0("Add ",  lysate / 10000 * 9, " mL of K medium to lysate."))
+            kan <- (paste0("Add ", 50*lysate/80000, " uL of Kanamycin to lysate mix."))
+            
+            lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
+        } else if(input$version == "v3") {
+            # make 15 mg/mL which will be diluted 1:3 in the well
+            #If lysate is exact, add another tube
+            lysate <- sum(allplates$lysate)
+            if((lysate %% 6666) == 0) {
+                lysate <- lysate + 6666
+            }
+            
+            lysate_mix <- (paste0("Total lysate mix needed: ", lysate / 1000, " mL (15 mg/mL), actually make: ", ceiling(lysate / 6666)*6.666, " mL"))
+            lysate_tubes <- (paste0("Number of lysate tubes needed: ", ceiling(lysate / 6666)))
+            lysate <- ceiling(lysate / 6666) *6666
+            lysate_K <- (paste0("Add ",  lysate/1000 - ceiling(lysate / 6666), " mL of K medium to lysate."))
+            kan <- (paste0("Add ", 3*50*lysate/80000, " uL of Kanamycin to lysate mix."))
+            
+            lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
+            
+        }
+        
+        return(list(allplates, lysate_dilutions, drugdilute))
+
+        
+    })
+    
+    # lysate setup
+    output$lysate_setup <- shiny::renderUI({
+        
+        dosetable <- calculate_dose()
+        
+        # drug dilutions
+        output$drugdilutions <- shiny::renderTable({
+            dosetable[[3]]
+        })
+
+        lysate_instructions <- dosetable[[2]]
+
+        tagList(
+            h2("Lysate Setup"),
+            h6(glue::glue("Version: {input$version}")),
+            h6(lysate_instructions[1]),
+            h6(lysate_instructions[2]),
+            h6(lysate_instructions[3]),
+            h6(lysate_instructions[4]),
+            br()
+            )
+        
+        
+    })
+    
+    
+    
+    
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
