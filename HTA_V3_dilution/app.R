@@ -86,40 +86,68 @@ server <- function(input, output) {
             # update when button is pushed
             input$go
             
-            lapply(1:numdrugs, function(i) {
-                inputPanel(
-                    tagList(
-                        h2(glue::glue("Drug {i}")),
-                        
-                        # drug name
-                        shiny::textInput(inputId = glue::glue("drug_name{i}"), label = "Drug:", value = NA),
-                        
-                        # drug stock concentration
-                        shiny::numericInput(inputId = glue::glue("drug_stock{i}"), label = "Drug stock concentration (mM):", min = 0, value = NA),
-                        
-                        # diluent
-                        shiny::radioButtons(inputId = glue::glue("control_name{i}"), label = "Control:", choices = c("DMSO", "Water")),
-                        
-                        # multiple concentrations if dose
-                        
-                        #     # drug concentration
-                        #     shiny::textInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentrations (uM):"),
-                        # } else {
+            if(input$dose) {
+                lapply(1:numdrugs, function(i) {
+                    inputPanel(
+                        tagList(
+                            h2(glue::glue("Drug {i}")),
+                            
+                            # drug name
+                            shiny::textInput(inputId = glue::glue("drug_name{i}"), label = "Drug:", value = NA),
+                            
+                            # drug stock concentration
+                            shiny::numericInput(inputId = glue::glue("drug_stock{i}"), label = "Drug stock concentration (mM):", min = 0, value = NA),
+                            
+                            # diluent
+                            shiny::radioButtons(inputId = glue::glue("control_name{i}"), label = "Control:", choices = c("DMSO", "Water")),
+                            
+                            # multiple concentrations if dose
+                            shiny::uiOutput("doses"),
+                            
                             # drug concentration
-                            shiny::numericInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentration (uM):", min = 0, value = NA),
-                        # }
-
-                        # number of plates
-                        shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
-                        
-                        # number of control plates
-                        shiny::numericInput(inputId = glue::glue("controlplates{i}"), label = "Number of control plates:", min = 1, value = 1),
-                        
-                        # number of wells per condition per plate
-                        shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 96)
+                            shiny::textInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentrations (uM): (e.g. 0,5,10,15,20)"),
+                            
+                            # number of plates
+                            shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
+                            
+                            # number of wells per condition per plate
+                            shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 96)
+                        )
                     )
-                )
-            })
+                })
+            } else {
+                lapply(1:numdrugs, function(i) {
+                    inputPanel(
+                        tagList(
+                            h2(glue::glue("Drug {i}")),
+                            
+                            # drug name
+                            shiny::textInput(inputId = glue::glue("drug_name{i}"), label = "Drug:", value = NA),
+                            
+                            # drug stock concentration
+                            shiny::numericInput(inputId = glue::glue("drug_stock{i}"), label = "Drug stock concentration (mM):", min = 0, value = NA),
+                            
+                            # diluent
+                            shiny::radioButtons(inputId = glue::glue("control_name{i}"), label = "Control:", choices = c("DMSO", "Water")),
+                            
+                            # multiple concentrations if dose
+                            shiny::uiOutput("doses"),
+                            
+                            # drug concentration
+                            shiny::textInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentrations (uM):"),
+                            
+                            # number of plates
+                            shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
+                            
+                            # number of control plates
+                            shiny::numericInput(inputId = glue::glue("controlplates{i}"), label = "Number of control plates:", min = 1, value = 1),
+                            
+                            # number of wells per condition per plate
+                            shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 96)
+                        )
+                    )
+                })
+            }
         })
     })
     
@@ -141,53 +169,74 @@ server <- function(input, output) {
         # how many drugs?
         numdrugs <- input$drugs
         
-        df <- NULL
-        for(i in 1:numdrugs) {
-            df2 <- data.frame(
-                drug = input[[glue::glue("drug_name{i}")]],
-                drugstock = input[[glue::glue("drug_stock{i}")]],
-                diluent = input[[glue::glue("control_name{i}")]],
-                wellconc = input[[glue::glue("drug_dose{i}")]],
-                version = input$version,
-                drugplates = input[[glue::glue("drugplates{i}")]],
-                controlplates = input[[glue::glue("controlplates{i}")]],
-                wells = input[[glue::glue("wells{i}")]],
-                intconc = input[[glue::glue("drug_stock{i}")]]
-            )
-            df <- rbind(df, df2)
-        }
-
-        dose <- df %>%
-            dplyr::mutate(version = as.character(version),
-                          workingconc = ifelse(version == "v2", wellconc, wellconc*3),
-                          total_volume = ifelse(version == "v2", 
-                                                drugplates*wells*50*1.1,
-                                                drugplates*wells*25*1.1),
-                          lysate = 0.99*total_volume,
-                          drug_ul = workingconc*total_volume/(intconc*1000),
-                          drug_dilute = ceiling((drug_ul * intconc) / drugstock),
-                          dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
-                          dil_ul = (0.01*total_volume) - drug_ul,
-                          control_drug_ul = 0,
-                          control_dil_ul = 0.01*total_volume)
-        
-        # Check to make sure dilution is enough, should not pipette less than the minimum amount
-        min <- input$min
-        tooSmall <- dose %>%
-            dplyr::filter(drug_ul < min, drug_ul > 0)
-        dose2 <- dose
-        
-        while(nrow(tooSmall) > 0) {
-            dose2 <- dose2 %>%
-                dplyr::select(names(df))
-            oldconcs <- dose2 %>%
-                dplyr::filter(!(drug %in% unique(tooSmall$drug)))
-            concs2 <- dose2 %>%
-                dplyr::filter(drug %in% unique(tooSmall$drug)) %>%
-                dplyr::mutate(intconc = intconc / 10)
-            newconcs <- rbind(oldconcs, concs2)
+        if(input$dose) {
+            # create dataframe
+            df <- NULL
+            for(i in 1:numdrugs) {
+                df2 <- data.frame(
+                    drug = input[[glue::glue("drug_name{i}")]],
+                    drugstock = input[[glue::glue("drug_stock{i}")]],
+                    diluent = input[[glue::glue("control_name{i}")]],
+                    wellconc = input[[glue::glue("drug_dose{i}")]],
+                    version = input$version,
+                    drugplates = input[[glue::glue("drugplates{i}")]],
+                    controlplates = 0,
+                    wells = input[[glue::glue("wells{i}")]],
+                    intconc = input[[glue::glue("drug_stock{i}")]]
+                )
+                df <- rbind(df, df2)
+            }
             
-            dose2 <- newconcs %>%
+            dose <- df %>%
+                tidyr::separate_rows(wellconc, sep = ",") %>%
+                dplyr::mutate(version = as.character(version),
+                              wellconc = as.numeric(wellconc),
+                              workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                              total_volume = ifelse(version == "v2", 
+                                                    drugplates*wells*50*1.1,
+                                                    drugplates*wells*25*1.1),
+                              lysate = 0.99*total_volume,
+                              drug_ul = workingconc*total_volume/(intconc*1000),
+                              drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                              dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                              dil_ul = (0.01*total_volume) - drug_ul,
+                              control_drug_ul = 0,
+                              control_dil_ul = 0.01*total_volume)
+            
+            drugdilute <- dose %>%
+                dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
+                              dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
+                dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution) %>%
+                dplyr::distinct() 
+            
+            drugplate <- dose %>%
+                dplyr::select(condition = drug, diluent, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+                dplyr::mutate(concentration = as.character(concentration))
+            
+            allplates <- drugplate
+            
+            # calculate lysate needs
+            plates <- ceiling(sum(dose$wells) / 96)
+            
+        } else {
+            # create dataframe
+            df <- NULL
+            for(i in 1:numdrugs) {
+                df2 <- data.frame(
+                    drug = input[[glue::glue("drug_name{i}")]],
+                    drugstock = input[[glue::glue("drug_stock{i}")]],
+                    diluent = input[[glue::glue("control_name{i}")]],
+                    wellconc = input[[glue::glue("drug_dose{i}")]],
+                    version = input$version,
+                    drugplates = input[[glue::glue("drugplates{i}")]],
+                    controlplates = input[[glue::glue("controlplates{i}")]],
+                    wells = input[[glue::glue("wells{i}")]],
+                    intconc = input[[glue::glue("drug_stock{i}")]]
+                )
+                df <- rbind(df, df2)
+            }
+            
+            dose <- df %>%
                 dplyr::mutate(version = as.character(version),
                               workingconc = ifelse(version == "v2", wellconc, wellconc*3),
                               total_volume = ifelse(version == "v2", 
@@ -195,38 +244,69 @@ server <- function(input, output) {
                                                     drugplates*wells*25*1.1),
                               lysate = 0.99*total_volume,
                               drug_ul = workingconc*total_volume/(intconc*1000),
-                              dil_ul = (0.01*total_volume) - drug_ul,
                               drug_dilute = ceiling((drug_ul * intconc) / drugstock),
                               dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                              dil_ul = (0.01*total_volume) - drug_ul,
                               control_drug_ul = 0,
                               control_dil_ul = 0.01*total_volume)
             
-            tooSmall <- dose2 %>%
+            # Check to make sure dilution is enough, should not pipette less than the minimum amount
+            min <- input$min
+            tooSmall <- dose %>%
                 dplyr::filter(drug_ul < min, drug_ul > 0)
+            dose2 <- dose
+            
+            while(nrow(tooSmall) > 0) {
+                dose2 <- dose2 %>%
+                    dplyr::select(names(df))
+                oldconcs <- dose2 %>%
+                    dplyr::filter(!(drug %in% unique(tooSmall$drug)))
+                concs2 <- dose2 %>%
+                    dplyr::filter(drug %in% unique(tooSmall$drug)) %>%
+                    dplyr::mutate(intconc = intconc / 10)
+                newconcs <- rbind(oldconcs, concs2)
+                
+                dose2 <- newconcs %>%
+                    dplyr::mutate(version = as.character(version),
+                                  workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                                  total_volume = ifelse(version == "v2", 
+                                                        drugplates*wells*50*1.1,
+                                                        drugplates*wells*25*1.1),
+                                  lysate = 0.99*total_volume,
+                                  drug_ul = workingconc*total_volume/(intconc*1000),
+                                  dil_ul = (0.01*total_volume) - drug_ul,
+                                  drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                                  dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                                  control_drug_ul = 0,
+                                  control_dil_ul = 0.01*total_volume)
+                
+                tooSmall <- dose2 %>%
+                    dplyr::filter(drug_ul < min, drug_ul > 0)
+            }
+            
+            dose <- dose2
+            
+            drugdilute <- dose %>%
+                dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
+                              dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
+                dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution) %>%
+                dplyr::distinct() 
+            
+            drugplate <- dose %>%
+                dplyr::select(condition = drug, diluent, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+                dplyr::mutate(concentration = as.character(concentration))
+            
+            controlplate <- dose %>%
+                dplyr::select(condition = diluent, diluent, concentration = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
+                dplyr::mutate(diluent = "None",
+                              concentration = "1%")
+            
+            allplates <- drugplate %>%
+                dplyr::full_join(controlplate)
+            
+            # calculate lysate needs
+            plates <- sum(dose$drugplates) + sum(dose$controlplates)
         }
-        
-        dose <- dose2
-        
-        drugdilute <- dose %>%
-            dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
-                          dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
-            dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution) %>%
-            dplyr::distinct() 
-        
-        drugplate <- dose %>%
-            dplyr::select(condition = drug, diluent, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
-            dplyr::mutate(concentration = as.character(concentration))
-        
-        controlplate <- dose %>%
-            dplyr::select(condition = diluent, diluent, concentration = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
-            dplyr::mutate(diluent = "None",
-                          concentration = "1%")
-        
-        allplates <- drugplate %>%
-            dplyr::full_join(controlplate)
-        
-        # calculate lysate needs
-        plates <- sum(dose$drugplates) + sum(dose$controlplates)
         
         # lysate
         if(input$version == "v2") {
