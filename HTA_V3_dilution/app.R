@@ -1,6 +1,7 @@
 
 library(shiny)
 library(shinythemes)
+library(tidyverse)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -59,7 +60,7 @@ ui <- fluidPage(
                                      
                                      # dilutions dataframe
                                      h2("Plate Dilutions"),
-                                     shiny::tableOutput("dilutions")
+                                     shiny::uiOutput("dilutions")
                                  )))
 
         )
@@ -101,9 +102,6 @@ server <- function(input, output) {
                             # diluent
                             shiny::radioButtons(inputId = glue::glue("control_name{i}"), label = "Control:", choices = c("DMSO", "Water")),
                             
-                            # multiple concentrations if dose
-                            shiny::uiOutput("doses"),
-                            
                             # drug concentration
                             shiny::textInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentrations (uM): (e.g. 0,5,10,15,20)"),
                             
@@ -130,11 +128,8 @@ server <- function(input, output) {
                             # diluent
                             shiny::radioButtons(inputId = glue::glue("control_name{i}"), label = "Control:", choices = c("DMSO", "Water")),
                             
-                            # multiple concentrations if dose
-                            shiny::uiOutput("doses"),
-                            
                             # drug concentration
-                            shiny::textInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentrations (uM):"),
+                            shiny::numericInput(inputId = glue::glue("drug_dose{i}"), label = "Drug concentration (uM):", min = 0, value = NA),
                             
                             # number of plates
                             shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
@@ -157,7 +152,7 @@ server <- function(input, output) {
         dosetable <- calculate_dose()
         
         # output dataframe
-        output$dilutions <- renderTable({
+        output$dilutions <- renderUI({
             dosetable[[1]]
         })
         
@@ -187,6 +182,35 @@ server <- function(input, output) {
                 df <- rbind(df, df2)
             }
             
+            # check tenfold dilutions
+            min <- input$min
+            counts <- NULL
+            dilutions <- c(1, 10, 100, 1000, 10000)
+            for(i in dilutions) {
+                dose <- df %>%
+                    tidyr::separate_rows(wellconc, sep = ",") %>%
+                    dplyr::mutate(version = as.character(version),
+                                  wellconc = as.numeric(wellconc),
+                                  workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                                  total_volume = ifelse(version == "v2", 
+                                                        drugplates*wells*50*1.1,
+                                                        drugplates*wells*25*1.1),
+                                  intconc = intconc / i,
+                                  lysate = 0.99*total_volume,
+                                  drug_ul = workingconc*total_volume/(intconc*1000),
+                                  drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                                  dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                                  dil_ul = (0.01*total_volume) - drug_ul,
+                                  control_drug_ul = 0,
+                                  control_dil_ul = 0.01*total_volume) %>%
+                    dplyr::filter(drug_ul > min)
+                counts <- append(counts, nrow(dose))
+            }
+            
+            # determine which intermediate concentration
+            dil <- dilutions[which(counts == max(counts))][1]
+            
+            # use dilution
             dose <- df %>%
                 tidyr::separate_rows(wellconc, sep = ",") %>%
                 dplyr::mutate(version = as.character(version),
@@ -195,6 +219,7 @@ server <- function(input, output) {
                               total_volume = ifelse(version == "v2", 
                                                     drugplates*wells*50*1.1,
                                                     drugplates*wells*25*1.1),
+                              intconc = intconc / dil,
                               lysate = 0.99*total_volume,
                               drug_ul = workingconc*total_volume/(intconc*1000),
                               drug_dilute = ceiling((drug_ul * intconc) / drugstock),
@@ -203,6 +228,63 @@ server <- function(input, output) {
                               control_drug_ul = 0,
                               control_dil_ul = 0.01*total_volume)
             
+            # check to see if the higher concentrations exceed 1% control
+            toohigh <- dose %>%
+                dplyr::filter(dil_ul < 0)
+            
+            justright <- dose %>%
+                dplyr::filter(dil_ul > 0)
+            
+            if(nrow(toohigh) > 0) {
+                counts <- NULL
+                dilutions <- c(1, 10, 100, 1000, 10000)
+                for(i in dilutions) {
+                    high <- toohigh %>%
+                        dplyr::select(names(df))%>%
+                        dplyr::mutate(intconc = drugstock) %>%
+                        dplyr::mutate(version = as.character(version),
+                                      wellconc = as.numeric(wellconc),
+                                      workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                                      total_volume = ifelse(version == "v2", 
+                                                            drugplates*wells*50*1.1,
+                                                            drugplates*wells*25*1.1),
+                                      intconc = intconc / i,
+                                      lysate = 0.99*total_volume,
+                                      drug_ul = workingconc*total_volume/(intconc*1000),
+                                      drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                                      dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                                      dil_ul = (0.01*total_volume) - drug_ul,
+                                      control_drug_ul = 0,
+                                      control_dil_ul = 0.01*total_volume) %>%
+                        dplyr::filter(drug_ul > min)
+                    counts <- append(counts, nrow(high))
+                }
+                
+                # determine which intermediate concentration
+                dil <- dilutions[which(counts == max(counts))][1]
+                
+                # use dilution for high rows
+                high <- toohigh %>%
+                    dplyr::select(names(df))%>%
+                    dplyr::mutate(intconc = drugstock) %>%
+                    dplyr::mutate(version = as.character(version),
+                                  wellconc = as.numeric(wellconc),
+                                  workingconc = ifelse(version == "v2", wellconc, wellconc*3),
+                                  total_volume = ifelse(version == "v2", 
+                                                        drugplates*wells*50*1.1,
+                                                        drugplates*wells*25*1.1),
+                                  intconc = intconc / dil,
+                                  lysate = 0.99*total_volume,
+                                  drug_ul = workingconc*total_volume/(intconc*1000),
+                                  drug_dilute = ceiling((drug_ul * intconc) / drugstock),
+                                  dil_dilute = (drug_dilute * drugstock/intconc) - drug_dilute,
+                                  dil_ul = (0.01*total_volume) - drug_ul,
+                                  control_drug_ul = 0,
+                                  control_dil_ul = 0.01*total_volume)
+                
+                dose <- rbind(justright, high)
+            }
+            
             drugdilute <- dose %>%
                 dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
                               dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
@@ -210,7 +292,8 @@ server <- function(input, output) {
                 dplyr::distinct() 
             
             drugplate <- dose %>%
-                dplyr::select(condition = drug, diluent, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+                dplyr::mutate(dilution_factor = paste0("1:", drugstock/intconc)) %>%
+                dplyr::select(condition = drug, diluent, dilution_factor, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
                 dplyr::mutate(concentration = as.character(concentration))
             
             allplates <- drugplate
