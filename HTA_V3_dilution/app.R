@@ -151,11 +151,27 @@ server <- function(input, output) {
     shiny::observeEvent(input$drug_done, {
         dosetable <- calculate_dose()
         
-        # output dataframe
-        output$dilutions <- renderUI({
-            dosetable[[1]]
-        })
-        
+        if(input$dose) {
+            lapply(1:input$drugs, function(d) {
+                output[[paste0('T', d)]] <- shiny::renderTable({
+                    dosetable[[1]] %>%
+                        dplyr::mutate(condition = as.character(condition)) %>%
+                        dplyr::filter(condition == input[[glue::glue("drug_name{d}")]])
+                })
+            })
+            
+            output$dilutions <- renderUI({
+                tagList(lapply(1:input$drugs, function(i) {
+                    shiny::tableOutput(paste0('T', i))
+                }))
+            })
+        } else {
+            # output dataframe
+            output$dilutions <- shiny::renderTable({
+                dosetable[[1]]
+            })
+        }
+
     })
     
     # calculate dose of drugs
@@ -292,7 +308,8 @@ server <- function(input, output) {
                 dplyr::distinct() 
             
             drugplate <- dose %>%
-                dplyr::mutate(dilution_factor = paste0("1:", drugstock/intconc)) %>%
+                dplyr::mutate(dilution_factor = paste0("1:", drugstock/intconc),
+                              dilution_factor = ifelse(dilution_factor == "1:1", NA, dilution_factor)) %>%
                 dplyr::select(condition = drug, diluent, dilution_factor, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
                 dplyr::mutate(concentration = as.character(concentration))
             
