@@ -1,0 +1,37 @@
+---
+title: "Test Report"
+output: pdf_document
+params:
+  version: NA
+  dose: NA
+  min: NA
+  drugs: NA
+---
+
+# User Inputs
+```{r, echo = F, warning = F, message = F}
+
+glue::glue("Version: {params$version}")
+glue::glue("Dose response: {params$dose}")
+glue::glue("Minimum amount to pipette: {params$min}")
+glue::glue("Number of drugs: {params$drugs}")
+
+# for(i in 1:params$drugs) {
+#     print(glue::glue("Drug {i}: "))
+# }
+
+```
+
+# Drug Dilutions
+```{r, echo = F, warning = F, message = F}
+
+print(dosetable[[1]])
+
+```
+
+# Plate Dilutions
+```{r, echo = F, warning = F, message = F}
+
+
+
+```

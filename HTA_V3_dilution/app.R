@@ -60,7 +60,11 @@ ui <- fluidPage(
                                      
                                      # dilutions dataframe
                                      h2("Plate Dilutions"),
-                                     shiny::uiOutput("dilutions")
+                                     shiny::uiOutput("dilutions"),
+                                     br(),
+                                     
+                                     # download button
+                                     shiny::downloadButton("download", "Download Dilutions")
                                  )))
 
         )
@@ -109,7 +113,7 @@ server <- function(input, output) {
                             shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
                             
                             # number of wells per condition per plate
-                            shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 96)
+                            shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 16)
                         )
                     )
                 })
@@ -309,10 +313,13 @@ server <- function(input, output) {
             
             drugplate <- dose %>%
                 dplyr::mutate(dilution_factor = paste0("1:", drugstock/intconc),
-                              dilution_factor = ifelse(dilution_factor == "1:1", NA, dilution_factor)) %>%
-                dplyr::select(condition = drug, diluent, dilution_factor, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+                              dilution_factor = ifelse(dilution_factor == "1:1", "NA", dilution_factor)) %>%
+                dplyr::select(condition = drug, diluent, dilution_factor, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul)  %>%
+                dplyr::arrange(concentration) %>%
                 dplyr::mutate(concentration = as.character(concentration))
             
+            # split by dilution factor
+            # allplates <- split(drugplate, drugplate$dilution_factor)
             allplates <- drugplate
             
             # calculate lysate needs
@@ -472,7 +479,35 @@ server <- function(input, output) {
         
     })
     
-    
+    # download report
+    output$download <- downloadHandler(
+        # For PDF output, change this to "report.pdf"
+        filename = "report.pdf",
+        content = function(file) {
+            # Copy the report file to a temporary directory before processing it, in
+            # case we don't have write permissions to the current working dir (which
+            # can happen when deployed).
+            tempReport <- file.path(tempdir(), "report.Rmd")
+            file.copy("report.Rmd", tempReport, overwrite = TRUE)
+            
+            # Set up parameters to pass to Rmd document
+            params <- list(
+                # drug_dilutions = output$drugdilutions,
+                           # plate_dilutions = output$dilutions,
+                           version = input$version,
+                           dose = input$dose,
+                           min = input$min,
+                           drugs = input$drugs)
+            
+            # Knit the document, passing in the `params` list, and eval it in a
+            # child of the global environment (this isolates the code in the document
+            # from the code in this app).
+            rmarkdown::render(tempReport, output_file = file,
+                              params = params,
+                              envir = new.env(parent = globalenv())
+            )
+        }
+    )
     
     
 }
