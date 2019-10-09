@@ -1,37 +1,96 @@
 ---
-title: "Test Report"
+title: "My Special Dilution Sheet"
 output: pdf_document
-params:
-  version: NA
-  dose: NA
-  min: NA
-  drugs: NA
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+mainfont: Calibri Light
 ---
 
 # User Inputs
-```{r, echo = F, warning = F, message = F}
+```{r, echo = F, warning = F, message = F, results = 'asis'}
 
-glue::glue("Version: {params$version}")
-glue::glue("Dose response: {params$dose}")
-glue::glue("Minimum amount to pipette: {params$min}")
-glue::glue("Number of drugs: {params$drugs}")
+glue::glue("Version: {version}")
+cat('\n')
+glue::glue("Dose response: {dose}")
+cat('\n')
+glue::glue("Minimum amount to pipette: {min}")
+cat('\n')
+glue::glue("Number of drugs: {drugs}")
+cat('\n')
+if(dose == T) {
+    drug_inputs <- data.frame(drug_name = NA, drug_stock = NA, control_name = NA, drug_dose = NA, drug_plates = NA, wells = NA)
+    for(d in 1:drugs) {
+        drug_inputs <- rbind(drug_inputs, c(get(glue::glue("drug_name{d}")),
+                             get(glue::glue("drug_stock{d}")),
+                             get(glue::glue("control_name{d}")),
+                             get(glue::glue("drug_dose{d}")),
+                             get(glue::glue("drugplates{d}")),
+                             get(glue::glue("wells{d}"))))
+    }
+    drug_inputs <- drug_inputs %>%
+        na.omit()
+} else {
+    drug_inputs <- data.frame(drug_name = NA, drug_stock = NA, control_name = NA, drug_dose = NA, drug_plates = NA, control_plates = NA, wells = NA)
+    for(d in 1:drugs) {
+        drug_inputs <- rbind(drug_inputs, c(get(glue::glue("drug_name{d}")),
+                             get(glue::glue("drug_stock{d}")),
+                             get(glue::glue("control_name{d}")),
+                             get(glue::glue("drug_dose{d}")),
+                             get(glue::glue("drugplates{d}")),
+                             get(glue::glue("controlplates{d}")),
+                             get(glue::glue("wells{d}"))))
+    }
+    drug_inputs <- drug_inputs %>%
+        na.omit()
+}
 
-# for(i in 1:params$drugs) {
-#     print(glue::glue("Drug {i}: "))
-# }
+# print drug inputs
+knitr::kable(drug_inputs, format = "markdown")
+
+cat('\n')
+cat("\n\n\\pagebreak\n")
+
+
+```
+
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+dosetable <- calculate_dose()
+
+```
+
+# Lysate Setup
+```{r, echo = F, warning = F, message = F, results = 'asis'}
+
+lysate_instructions <- dosetable[[2]]
+lysate_instructions[1]
+cat('\n')
+print(lysate_instructions[2])
+cat('\n')
+print(lysate_instructions[3])
+cat('\n')
+print(lysate_instructions[4])
 
 ```
 
 # Drug Dilutions
-```{r, echo = F, warning = F, message = F}
+```{r, echo = F, warning = F, message = F, results = 'asis'}
 
-print(dosetable[[1]])
+knitr::kable(dosetable[[3]], format = "markdown")
 
 ```
 
 # Plate Dilutions
-```{r, echo = F, warning = F, message = F}
+```{r, echo = F, warning = F, message = F, results = 'asis'}
 
-
+if(dose == T) {
+    for(d in 1:drugs) {
+        table <- dosetable[[1]] %>%
+            dplyr::mutate(condition = as.character(condition)) %>%
+            dplyr::filter(condition == get(glue::glue("drug_name{d}")))
+        print(knitr::kable(table, format = "markdown"))
+    }
+} else {
+    knitr::kable(dosetable[[1]], format = "markdown")
+}
 
 ```

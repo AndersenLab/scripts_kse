@@ -2,6 +2,7 @@
 library(shiny)
 library(shinythemes)
 library(tidyverse)
+library(gsheet)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -38,9 +39,14 @@ ui <- fluidPage(
         mainPanel(
             
             # create tabs
-            tabsetPanel(type = "tabs",
+            tabsetPanel(id = "dilution_tabs",
+                        type = "tabs",
                         tabPanel("setup",
                                  tagList(
+                                     # Add link to google sheet with drug information
+                                     h6(em("Not sure what concentration your drug is at? Check out this", 
+                                           a("Google Sheet", href = "https://docs.google.com/spreadsheets/d/1nS3_Ra2XfguACxCdp2Ni4vUDm2dwsvP_qwumqhzF0tE/edit#gid=211787800"))),
+                                     
                                      # based on number of drugs, allow input information for drug, condition, control, dose, plates, etc.
                                      shiny::uiOutput("setup"),
                                      
@@ -56,6 +62,10 @@ ui <- fluidPage(
                                      # drug dilutions
                                      h2("Drug Dilutions"),
                                      shiny::tableOutput("drugdilutions"),
+                                     
+                                     # Add link to google sheet with drug information
+                                     h6(em("Not sure how many drug tubes do you need? Check out this", 
+                                           a("Google Sheet", href = "https://docs.google.com/spreadsheets/d/1nS3_Ra2XfguACxCdp2Ni4vUDm2dwsvP_qwumqhzF0tE/edit#gid=211787800"))),
                                      br(),
                                      
                                      # dilutions dataframe
@@ -72,7 +82,12 @@ ui <- fluidPage(
 )
 
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
+    
+    # read in drug inventory
+    tubes <- gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1nS3_Ra2XfguACxCdp2Ni4vUDm2dwsvP_qwumqhzF0tE/edit#gid=211787800")
+    names(tubes) <- tubes[1,]
+    tubes <- tubes[2:nrow(tubes),]
     
     # when go button is pushed, do this
     shiny::observeEvent(input$go, {
@@ -175,6 +190,9 @@ server <- function(input, output) {
                 dosetable[[1]]
             })
         }
+        
+        # also switch tabs
+        shiny::updateTabsetPanel(session, "dilution_tabs", selected = "dilutions")
 
     })
     
@@ -306,21 +324,27 @@ server <- function(input, output) {
             }
             
             drugdilute <- dose %>%
+                dplyr::group_by(drug) %>%
                 dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
+                              drug_need = drug_ul / (drugstock / intconc),
+                              total_drug = sum(drug_need),
                               dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
-                dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution) %>%
+                dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution, total_drug) %>%
                 dplyr::distinct() 
             
             drugplate <- dose %>%
                 dplyr::mutate(dilution_factor = paste0("1:", drugstock/intconc),
-                              dilution_factor = ifelse(dilution_factor == "1:1", "NA", dilution_factor)) %>%
-                dplyr::select(condition = drug, diluent, dilution_factor, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul)  %>%
-                dplyr::arrange(concentration) %>%
-                dplyr::mutate(concentration = as.character(concentration))
+                              dilution_factor = ifelse(dilution_factor == "1:1", "Stock Concentration", dilution_factor)) %>%
+                dplyr::select(condition = drug, diluent, dilution_factor, concentration_uM = wellconc, plates = drugplates, lysate, drug_ul, dil_ul)  %>%
+                dplyr::arrange(concentration_uM) %>%
+                dplyr::mutate(concentration_uM = as.character(concentration_uM))
             
             # split by dilution factor
             # allplates <- split(drugplate, drugplate$dilution_factor)
-            allplates <- drugplate
+            allplates <- drugplate %>%
+                dplyr::mutate(drug_ul = round(drug_ul, digits = 2),
+                              dil_ul = round(dil_ul, digits = 2),
+                              lysate = round(lysate, digits = 2))
             
             # calculate lysate needs
             plates <- ceiling(sum(dose$wells) / 96)
@@ -394,22 +418,28 @@ server <- function(input, output) {
             dose <- dose2
             
             drugdilute <- dose %>%
+                dplyr::group_by(drug) %>%
                 dplyr::mutate(dilution = paste0("1:", drugstock / intconc),
+                              drug_need = drug_ul / (drugstock / intconc),
+                              total_drug = sum(drug_need),
                               dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
-                dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution) %>%
+                dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution, total_drug) %>%
                 dplyr::distinct() 
             
             drugplate <- dose %>%
-                dplyr::select(condition = drug, diluent, concentration = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
-                dplyr::mutate(concentration = as.character(concentration))
+                dplyr::select(condition = drug, diluent, concentration_uM = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+                dplyr::mutate(concentration_uM = as.character(concentration_uM))
             
             controlplate <- dose %>%
-                dplyr::select(condition = diluent, diluent, concentration = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
+                dplyr::select(condition = diluent, diluent, concentration_uM = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
                 dplyr::mutate(diluent = "None",
-                              concentration = "1%")
+                              concentration_uM = "1%")
             
             allplates <- drugplate %>%
-                dplyr::full_join(controlplate)
+                dplyr::full_join(controlplate) %>%
+                dplyr::mutate(drug_ul = round(drug_ul, digits = 2),
+                              dil_ul = round(dil_ul, digits = 2),
+                              lysate = round(lysate, digits = 2))
             
             # calculate lysate needs
             plates <- sum(dose$drugplates) + sum(dose$controlplates)
@@ -424,11 +454,11 @@ server <- function(input, output) {
                 lysate <- lysate + 10000
             }
             
-            lysate_mix <- (paste0("Total lysate mix needed: ", lysate / 1000, " mL (10 mg/mL), actually make: ", ceiling(lysate / 10000)*10, " mL"))
+            lysate_mix <- (paste0("Total lysate mix needed: ", round(lysate / 1000, digits = 2), " mL (10 mg/mL), actually make: ", round(ceiling(lysate / 10000)*10, digits = 2), " mL"))
             lysate_tubes <- (paste0("Number of lysate tubes needed: ", ceiling(lysate / 10000)))
-            lysate <- ceiling(lysate / 10000) *10000
-            lysate_K <- (paste0("Add ",  lysate / 10000 * 9, " mL of K medium to lysate."))
-            kan <- (paste0("Add ", 50*lysate/80000, " uL of Kanamycin to lysate mix."))
+            lysate <- round(ceiling(lysate / 10000) *10000, digits = 2)
+            lysate_K <- (paste0("Add ",  round(lysate / 10000 * 9, digits = 2), " mL of K medium to lysate."))
+            kan <- (paste0("Add ", round(50*lysate/80000, digits = 2), " uL of Kanamycin to lysate mix."))
             
             lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
         } else if(input$version == "v3") {
@@ -439,11 +469,11 @@ server <- function(input, output) {
                 lysate <- lysate + 6666
             }
             
-            lysate_mix <- (paste0("Total lysate mix needed: ", lysate / 1000, " mL (15 mg/mL), actually make: ", ceiling(lysate / 6666)*6.666, " mL"))
-            lysate_tubes <- (paste0("Number of lysate tubes needed: ", ceiling(lysate / 6666)))
-            lysate <- ceiling(lysate / 6666) *6666
-            lysate_K <- (paste0("Add ",  lysate/1000 - ceiling(lysate / 6666), " mL of K medium to lysate."))
-            kan <- (paste0("Add ", 3*50*lysate/80000, " uL of Kanamycin to lysate mix."))
+            lysate_mix <- (paste0("Total lysate mix needed: ", round(lysate / 1000, digits = 2), " mL (15 mg/mL), actually make: ", round(ceiling(lysate / 6666)*6.666, digits = 2), " mL"))
+            lysate_tubes <- (paste0("Number of lysate tubes needed: ", round(ceiling(lysate / 6666), digits = 2)))
+            lysate <- round(ceiling(lysate / 6666) *6666, digits = 2)
+            lysate_K <- (paste0("Add ",  round(lysate/1000 - ceiling(lysate / 6666), digits = 2), " mL of K medium to lysate."))
+            kan <- (paste0("Add ", round(3*50*lysate/80000, digits = 2), " uL of Kanamycin to lysate mix."))
             
             lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
             
@@ -489,23 +519,19 @@ server <- function(input, output) {
             # can happen when deployed).
             tempReport <- file.path(tempdir(), "report.Rmd")
             file.copy("report.Rmd", tempReport, overwrite = TRUE)
+
+            # load inputs into global environment for markdown            
+            inputs <- names(input)
+            for(i in 1:length(inputs)) {
+                assign(inputs[i], input[[inputs[i]]])
+            }
             
-            # Set up parameters to pass to Rmd document
-            params <- list(
-                # drug_dilutions = output$drugdilutions,
-                           # plate_dilutions = output$dilutions,
-                           version = input$version,
-                           dose = input$dose,
-                           min = input$min,
-                           drugs = input$drugs)
             
             # Knit the document, passing in the `params` list, and eval it in a
             # child of the global environment (this isolates the code in the document
             # from the code in this app).
-            rmarkdown::render(tempReport, output_file = file,
-                              params = params,
-                              envir = new.env(parent = globalenv())
-            )
+            rmarkdown::render(tempReport, output_file = file)
+            
         }
     )
     
