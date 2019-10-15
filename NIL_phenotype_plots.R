@@ -2,6 +2,175 @@ library(tidyverse)
 library(ggplot2)
 library(cowplot)
 
+# quickly plot NIL phenotype. N2 will be colored orange and CB blue (NILs are grey)
+# df - dataframe of NIL phenotype (from sorter)
+# cond - condition to plot
+# pltrt - trait to plot
+# ylab - y label, default is condition.trait
+# textsize - size of text in plot, default is 12
+# titlesize - size of titles in plot, defalt is 14
+# pointsize - size of points in plot, default is 0.5
+quick_plot <- function(df, cond, pltrt, ylab = paste0(cond, ".", pltrt),
+                       textsize = 12, titlesize = 14, pointsize = 0.5) {
+    phen_gen <- df %>%
+        dplyr::filter(trait == pltrt, condition == cond) %>%
+        dplyr::mutate(type = ifelse(as.character(strain) == "N2", "N2_parent", ifelse(as.character(strain) == "CB4856", "CB_parent", "NIL")))
+    cbdf <- phen_gen[phen_gen$strain=="CB4856",]
+    n2df <- phen_gen[phen_gen$strain=="N2",]
+    phen_gen %>%
+        ggplot(.) +
+        aes(x = factor(strain),
+            y = phenotype, 
+            fill=factor(type)) +
+        geom_jitter(size = pointsize, width = 0.1)+
+        geom_boxplot(outlier.colour = NA, alpha = 0.7)+
+        scale_fill_manual(values = c("N2_parent" = "orange", "CB_parent" = "blue", "NIL" = "gray"))+
+        theme_bw()+
+        theme(axis.text.x = element_text(size=textsize, face="bold", color="black", angle = 90),
+              axis.text.y = element_text(size=textsize, face="bold", color="black"),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size=titlesize, face="bold", color="black"),
+              strip.text.x = element_text(size=textsize, face="bold", color="black"),
+              strip.text.y = element_text(size=textsize, face="bold", color="black"),
+              plot.title = element_text(size=titlesize, face="bold", vjust = 1),
+              legend.position="none",
+              panel.background = element_rect( color="black",size=1.2),
+              strip.background = element_rect(color = "black", size = 1.2),
+              panel.border = element_rect( colour = "black"))+
+        labs(title = ylab)
+}
+
+# quickly plot NIL phenotype. N2 will be colored orange and CB blue (NILs are grey). Orientation will be flipped to show nil genotypes in combination with phenotypes (doesn't plot genotypes though)
+# df - dataframe of NIL phenotype (from sorter)
+# cond - condition to plot
+# pltrt - trait to plot
+# ylab - y label, default is condition.trait
+# textsize - size of text in plot, default is 12
+# titlesize - size of titles in plot, defalt is 14
+# pointsize - size of points in plot, default is 0.5
+quick_plot_breakup_flip <- function(df, cond, pltrt, ylab = paste0(cond, ".", pltrt),
+                                    textsize = 12, titlesize = 14, pointsize = 0.5) {
+    phen_gen <- df %>%
+        dplyr::filter(trait == pltrt, condition == cond) %>%
+        dplyr::mutate(type = ifelse(as.character(strain) == "N2", "N2_parent", ifelse(as.character(strain) == "CB4856", "CB_parent", "NIL")))
+    cbdf <- phen_gen[phen_gen$strain=="CB4856",]
+    n2df <- phen_gen[phen_gen$strain=="N2",]
+    phen_gen %>%
+        ggplot(.) +
+        aes(x = factor(strain),
+            y = phenotype, 
+            fill=factor(type)) +
+        geom_jitter(size = pointsize, width = 0.1)+
+        geom_boxplot(outlier.colour = NA, alpha = 0.7)+
+        scale_fill_manual(values = c("N2_parent" = "orange", "CB_parent" = "blue", "NIL" = "gray"))+
+        theme_bw()+
+        coord_flip()+
+        theme(axis.text.x = element_text(size=textsize, face="bold", color="black"),
+              axis.text.y = element_blank(),
+              axis.title.x = element_text(size=titlesize, face="bold", color="black", vjust=-.3),
+              axis.title.y = element_blank(),
+              strip.text.x = element_text(size=textsize, face="bold", color="black"),
+              strip.text.y = element_text(size=textsize, face="bold", color="black"),
+              plot.title = element_text(size=titlesize, face="bold", vjust = 1),
+              legend.position="none",
+              panel.background = element_rect( color="black",size=1.2),
+              strip.background = element_rect(color = "black", size = 1.2),
+              panel.border = element_rect( colour = "black"))+
+        labs(y = ylab)
+}
+
+# plot all QTL from linkagemapping for several traits/conditions
+# annotatedmap - annotated mapping (result from `linkagemapping::annotate_lods()`)
+# nils - buggy, might not work. Supply a dataframe of nil genotype information as ci_l_pos and ci_r_pos define the region of the NIL. Will be plotted as a red rectangle on the plot.
+all_lod_plots <- function(annotatedmap, nils = NULL) {
+    newmap <- annotatedmap %>%
+        arrange(chr, ci_l_pos, ci_r_pos) %>%
+        na.omit()
+    
+    newmap <- newmap %>%
+        dplyr::mutate(condition = stringr::str_split_fixed(.$trait, "\\.", 2)[,1]) %>%
+        dplyr::mutate(trait = stringr::str_split_fixed(.$trait, "\\.", 2)[,2])
+    
+    faketrait <- newmap$trait[1]
+    #Set chromosome boundaries
+    newrows <- newmap[1,] 
+    newrows[1,] = c(NA,"I",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,14972282, NA)
+    newrows[2,] = c(NA,"II",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,15173999, NA)
+    newrows[3,] = c(NA,"III",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,13829314, NA)
+    newrows[4,] = c(NA,"IV",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17450860, NA)
+    newrows[5,] = c(NA,"V",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,20914693, NA)
+    newrows[6,] = c(NA,"X",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17748731, NA)
+    newrows$ci_l_pos <- as.numeric(newrows$ci_l_pos)
+    newrows$ci_r_pos <- as.numeric(newrows$ci_r_pos)
+    newrows$pos <- as.numeric(newrows$pos)
+    newrows$lod <- as.numeric(newrows$lod)
+    
+    if(is.null(nils)) {
+        #Plot
+        ggplot(newmap)+
+            aes(x=pos/1E6, y=trait)+
+            theme_bw() +
+            viridis::scale_fill_viridis(name = "LOD") + viridis::scale_color_viridis(name = "LOD") +
+            geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
+            geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
+            geom_point(aes(fill=lod),colour = "black",size = 2, alpha = 1, shape = 21)+
+            xlab("Genomic position (Mb)") + ylab("") +
+            theme(axis.text.x = element_text(size=10, face="bold", color="black"),
+                  axis.ticks.y = element_blank(),
+                  legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 10),
+                  legend.key.size = unit(.75, "cm"),
+                  panel.grid.major.x = element_line(),
+                  panel.grid.major.y = element_line(),
+                  panel.grid.minor.y = element_blank(),
+                  axis.text.y = element_text(size = 10, face = "bold", color = "black"),
+                  axis.title.x = element_text(size=12, face="bold", color= "black"),
+                  axis.title.y = element_blank(),
+                  strip.text.x = element_text(size=12, face="bold", color="black"),
+                  strip.text.y = element_text(size=12, face="bold", color="black", angle = 0),
+                  strip.background = element_rect(colour = "black", fill = "white", size = 0.75, linetype = "solid"),
+                  plot.title = element_text(size=12, face="bold")) +
+            facet_grid(condition ~ chr, scales = "free_x", space = "free")
+    } else {
+        #Plot
+        ggplot(newmap)+
+            aes(x=pos/1E6, y=trait)+
+            theme_bw() +
+            viridis::scale_fill_viridis(name = "LOD") + viridis::scale_color_viridis(name = "LOD") +
+            geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
+            geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
+            geom_rect(data=nils, aes(xmin = ci_l_pos/1e6, ymin = "cv.EXT", xmax = ci_r_pos/1e6, ymax = "var.TOF"), size = 2, alpha = 0.2, fill = "red")+
+            geom_point(aes(fill=lod),colour = "black",size = 2, alpha = 1, shape = 21)+
+            xlab("Genomic position (Mb)") + ylab("") +
+            theme(axis.text.x = element_text(size=10, face="bold", color="black"),
+                  axis.ticks.y = element_blank(),
+                  legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 10),
+                  legend.key.size = unit(.75, "cm"),
+                  panel.grid.major.x = element_line(),
+                  panel.grid.major.y = element_line(),
+                  panel.grid.minor.y = element_blank(),
+                  axis.text.y = element_text(size = 10, face = "bold", color = "black"),
+                  axis.title.x = element_text(size=12, face="bold", color= "black"),
+                  axis.title.y = element_blank(),
+                  strip.text.x = element_text(size=12, face="bold", color="black"),
+                  strip.text.y = element_text(size=12, face="bold", color="black", angle = 0),
+                  strip.background = element_rect(colour = "black", fill = "white", size = 0.75, linetype = "solid"),
+                  plot.title = element_text(size=12, face="bold")) +
+            facet_grid(condition ~ chr, scales = "free_x", space = "free")
+        
+        # need to fix the NIL segment to be dynamic based on how many traits there are
+    }
+    
+}
+
+# plot phenotype x genotype splits for RIAILs
+# cross - cross object containing genotype and phenotype of RIAILs (output of `linkagemapping::mergepheno()`)
+# map - annotated mapping (result from `linkagemapping::annotate_lods()`)
+# parent - usually "N2xCB4856"
+# tit - title for plot. Default is None.
+# ylab - add y label for plot, default is None.
+# textsize - size of text in plot, default is 8
+# titlesize - size of titles in plot, defalt is 16
+# pointsize - size of points in plot, default is 0.5
 pxgplot_kt <- function (cross, map, parent = "N2xCB4856", tit = "", ylab = "",
                         textsize = 8, titlesize = 16, pointsize = 0.5) {
     peaks <- map %>% dplyr::group_by(iteration) %>% dplyr::filter(!is.na(var_exp)) %>% 
@@ -78,6 +247,15 @@ pxgplot_kt <- function (cross, map, parent = "N2xCB4856", tit = "", ylab = "",
         ggplot2::labs(x = "", y = ylab)
 }
 
+# plot phenotype x genotype splits for RIAILs, including N2/CB parents!
+# cross - cross object containing genotype and phenotype of RIAILs (output of `linkagemapping::mergepheno()`)
+# map - annotated mapping (result from `linkagemapping::annotate_lods()`)
+# parpheno - dataframe for parent phenotype (this is not found in the crossobject so must be supplemented)
+# tit - title for plot. Default is None.
+# ylab - add y label for plot, default is None.
+# textsize - size of text in plot, default is 8
+# titlesize - size of titles in plot, defalt is 16
+# pointsize - size of points in plot, default is 0.5
 pxgplot_par_kt <- function (cross, map, parpheno, tit = "", ylab = "",
                         textsize = 8, titlesize = 16, pointsize = 0.5) {
     peaks <- map %>% 
@@ -152,7 +330,12 @@ pxgplot_par_kt <- function (cross, map, parpheno, tit = "", ylab = "",
         ggplot2::labs(x = "", y = ylab)
 }
 
-
+# plot linkagemapping results
+# map - annotated mapping (result from `linkagemapping::annotate_lods()`)
+# textsize - size of text in plot, default is 12
+# titlesize - size of titles in plot, defalt is 16
+# linesize - changes the size of the line of the linkagemap (important mostly for generating large figures for posters), default is 1
+# col - color of confidence interval, default is blue
 maxlodplot_kt <- function (map, textsize = 12, titlesize = 16, linesize = 1, col = "blue") {
     map1 <- map %>% dplyr::group_by(marker) %>% dplyr::filter(lod ==max(lod))
     cis <- map %>% dplyr::group_by(marker) %>% dplyr::mutate(maxlod = max(lod)) %>%
@@ -190,143 +373,3 @@ maxlodplot_kt <- function (map, textsize = 12, titlesize = 16, linesize = 1, col
     return(plot)
 }
 
-quick_plot_breakup_flip <- function(df, cond, pltrt, ylab = paste0(cond, ".", pltrt),
-                                    textsize = 12, titlesize = 14, pointsize = 0.5) {
-    phen_gen <- df %>%
-        dplyr::filter(trait == pltrt, condition == cond) %>%
-        dplyr::mutate(type = ifelse(as.character(strain) == "N2", "N2_parent", ifelse(as.character(strain) == "CB4856", "CB_parent", "NIL")))
-    cbdf <- phen_gen[phen_gen$strain=="CB4856",]
-    n2df <- phen_gen[phen_gen$strain=="N2",]
-    phen_gen %>%
-        ggplot(.) +
-        aes(x = factor(strain),
-            y = phenotype, 
-            fill=factor(type)) +
-        geom_jitter(size = pointsize, width = 0.1)+
-        geom_boxplot(outlier.colour = NA, alpha = 0.7)+
-        scale_fill_manual(values = c("N2_parent" = "orange", "CB_parent" = "blue", "NIL" = "gray"))+
-        theme_bw()+
-        coord_flip()+
-        theme(axis.text.x = element_text(size=textsize, face="bold", color="black"),
-              axis.text.y = element_blank(),
-              axis.title.x = element_text(size=titlesize, face="bold", color="black", vjust=-.3),
-              axis.title.y = element_blank(),
-              strip.text.x = element_text(size=textsize, face="bold", color="black"),
-              strip.text.y = element_text(size=textsize, face="bold", color="black"),
-              plot.title = element_text(size=titlesize, face="bold", vjust = 1),
-              legend.position="none",
-              panel.background = element_rect( color="black",size=1.2),
-              strip.background = element_rect(color = "black", size = 1.2),
-              panel.border = element_rect( colour = "black"))+
-        labs(y = ylab)
-}
-
-quick_plot <- function(df, cond, pltrt, ylab = paste0(cond, ".", pltrt),
-                       textsize = 12, titlesize = 14, pointsize = 0.5) {
-    phen_gen <- df %>%
-        dplyr::filter(trait == pltrt, condition == cond) %>%
-        dplyr::mutate(type = ifelse(as.character(strain) == "N2", "N2_parent", ifelse(as.character(strain) == "CB4856", "CB_parent", "NIL")))
-    cbdf <- phen_gen[phen_gen$strain=="CB4856",]
-    n2df <- phen_gen[phen_gen$strain=="N2",]
-    phen_gen %>%
-        ggplot(.) +
-        aes(x = factor(strain),
-            y = phenotype, 
-            fill=factor(type)) +
-        geom_jitter(size = pointsize, width = 0.1)+
-        geom_boxplot(outlier.colour = NA, alpha = 0.7)+
-        scale_fill_manual(values = c("N2_parent" = "orange", "CB_parent" = "blue", "NIL" = "gray"))+
-        theme_bw()+
-        theme(axis.text.x = element_text(size=textsize, face="bold", color="black", angle = 90),
-              axis.text.y = element_text(size=textsize, face="bold", color="black"),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size=titlesize, face="bold", color="black"),
-              strip.text.x = element_text(size=textsize, face="bold", color="black"),
-              strip.text.y = element_text(size=textsize, face="bold", color="black"),
-              plot.title = element_text(size=titlesize, face="bold", vjust = 1),
-              legend.position="none",
-              panel.background = element_rect( color="black",size=1.2),
-              strip.background = element_rect(color = "black", size = 1.2),
-              panel.border = element_rect( colour = "black"))+
-        labs(title = ylab)
-}
-
-all_lod_plots <- function(annotatedmap, nils = NULL) {
-    newmap <- annotatedmap %>%
-        arrange(chr, ci_l_pos, ci_r_pos) %>%
-        na.omit()
-    
-    newmap <- newmap %>%
-        dplyr::mutate(condition = stringr::str_split_fixed(.$trait, "\\.", 2)[,1]) %>%
-        dplyr::mutate(trait = stringr::str_split_fixed(.$trait, "\\.", 2)[,2])
-
-    faketrait <- newmap$trait[1]
-    #Set chromosome boundaries
-    newrows <- newmap[1,] 
-    newrows[1,] = c(NA,"I",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,14972282, NA)
-    newrows[2,] = c(NA,"II",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,15173999, NA)
-    newrows[3,] = c(NA,"III",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,13829314, NA)
-    newrows[4,] = c(NA,"IV",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17450860, NA)
-    newrows[5,] = c(NA,"V",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,20914693, NA)
-    newrows[6,] = c(NA,"X",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17748731, NA)
-    newrows$ci_l_pos <- as.numeric(newrows$ci_l_pos)
-    newrows$ci_r_pos <- as.numeric(newrows$ci_r_pos)
-    newrows$pos <- as.numeric(newrows$pos)
-    newrows$lod <- as.numeric(newrows$lod)
-    
-    if(is.null(nils)) {
-        #Plot
-        ggplot(newmap)+
-            aes(x=pos/1E6, y=trait)+
-            theme_bw() +
-            viridis::scale_fill_viridis(name = "LOD") + viridis::scale_color_viridis(name = "LOD") +
-            geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
-            geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
-            geom_point(aes(fill=lod),colour = "black",size = 2, alpha = 1, shape = 21)+
-            xlab("Genomic position (Mb)") + ylab("") +
-            theme(axis.text.x = element_text(size=10, face="bold", color="black"),
-                  axis.ticks.y = element_blank(),
-                  legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 10),
-                  legend.key.size = unit(.75, "cm"),
-                  panel.grid.major.x = element_line(),
-                  panel.grid.major.y = element_line(),
-                  panel.grid.minor.y = element_blank(),
-                  axis.text.y = element_text(size = 10, face = "bold", color = "black"),
-                  axis.title.x = element_text(size=12, face="bold", color= "black"),
-                  axis.title.y = element_blank(),
-                  strip.text.x = element_text(size=12, face="bold", color="black"),
-                  strip.text.y = element_text(size=12, face="bold", color="black", angle = 0),
-                  strip.background = element_rect(colour = "black", fill = "white", size = 0.75, linetype = "solid"),
-                  plot.title = element_text(size=12, face="bold")) +
-            facet_grid(condition ~ chr, scales = "free_x", space = "free")
-    } else {
-        #Plot
-        ggplot(newmap)+
-            aes(x=pos/1E6, y=trait)+
-            theme_bw() +
-            viridis::scale_fill_viridis(name = "LOD") + viridis::scale_color_viridis(name = "LOD") +
-            geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
-            geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
-            geom_rect(data=nils, aes(xmin = ci_l_pos/1e6, ymin = "cv.EXT", xmax = ci_r_pos/1e6, ymax = "var.TOF"), size = 2, alpha = 0.2, fill = "red")+
-            geom_point(aes(fill=lod),colour = "black",size = 2, alpha = 1, shape = 21)+
-            xlab("Genomic position (Mb)") + ylab("") +
-            theme(axis.text.x = element_text(size=10, face="bold", color="black"),
-                  axis.ticks.y = element_blank(),
-                  legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 10),
-                  legend.key.size = unit(.75, "cm"),
-                  panel.grid.major.x = element_line(),
-                  panel.grid.major.y = element_line(),
-                  panel.grid.minor.y = element_blank(),
-                  axis.text.y = element_text(size = 10, face = "bold", color = "black"),
-                  axis.title.x = element_text(size=12, face="bold", color= "black"),
-                  axis.title.y = element_blank(),
-                  strip.text.x = element_text(size=12, face="bold", color="black"),
-                  strip.text.y = element_text(size=12, face="bold", color="black", angle = 0),
-                  strip.background = element_rect(colour = "black", fill = "white", size = 0.75, linetype = "solid"),
-                  plot.title = element_text(size=12, face="bold")) +
-            facet_grid(condition ~ chr, scales = "free_x", space = "free")
-        
-        # need to fix the NIL segment to be dynamic based on how many traits there are
-    }
-    
-}

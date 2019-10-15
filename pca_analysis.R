@@ -1,7 +1,9 @@
 library(tidyverse)
 library(linkagemapping)
 
-# returns a list of (1) pca object and (2) pca phenotypes
+# Calculate principal components from phenotype dataframe with replicates (i.e. NILs)
+# pheno - dataframe of phenotypes
+# returns list of (1) pca object and (2) pca pheno
 calc_pc_reps <- function(pheno) {
     # calculate PC for linkage
     pc_traits <- pheno %>%
@@ -52,7 +54,9 @@ calc_pc_reps <- function(pheno) {
     return(list(pca_obj, PCpheno))
 }
 
-# returns a list of (1) pca object and (2) pca phenotypes
+# Calculate principal components from phenotype dataframe with no replicates (i.e. RIAILs)
+# pheno - dataframe of phenotypes
+# returns list of (1) pca object and (2) pca pheno
 calc_pc_noreps <- function(pheno) {
     # calculate PC for linkage
     pc_traits <- pheno %>%
@@ -98,8 +102,11 @@ calc_pc_noreps <- function(pheno) {
     return(list(pca_obj, PCpheno))
 }
 
-# returns a list of (1) pca object and (2) pca phenotypes
-predict_pc <- function(pheno, pca_obj, keep = 24) {
+# Predicts PCA phenotypes given loadings from another pca object (use for applying pca from linkage to NILs)
+# pheno - dataframe of phenotypes
+# pca_oject - pca object, output [[1]] from calc_pc_reps or calc_pc_noreps
+# keep - how many PCs to keep? default is number of traits in pheno
+predict_pc <- function(pheno, pca_obj, keep = length(unique(pheno$trait))) {
     # clean dataframe
     pc_traits <- pheno %>%
         dplyr::mutate(drugtrait = paste0(condition, ".", trait)) %>%

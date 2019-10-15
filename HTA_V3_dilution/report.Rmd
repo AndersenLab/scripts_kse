@@ -47,7 +47,12 @@ if(dose == T) {
 knitr::kable(drug_inputs, format = "markdown")
 
 cat('\n')
-cat("\n\n\\pagebreak\n")
+
+if(dose == T) {
+    cat("\n\n\\pagebreak\n")
+} else {
+    
+}
 
 
 ```

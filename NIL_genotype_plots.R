@@ -14,7 +14,7 @@ load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/nilgeno.Rda")
 # all.chr - plot all chromosomes or just the one with the NIL
 # section - "all" returns all NILs, "N2-NILs" returns only NILs N2 > CB. "CB-NILs" returns only NILs CB > N2
 # background - FALSE returns the genotype of just the chromosome or all chromosomes. TRUE returns just the chrom of interest and the "genome" genotype
-# ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL
+# ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL - plots only on chromosome of interest (chr)
 
 nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, right.bound = 19e6, scan.range = 2e4, 
                      all.chr=F, section = "all", background = F, ci = 1){
@@ -130,9 +130,6 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         nilsII$gt <- as.character(nilsII$gt)
     }
     
-    # nilsII <- nilsII %>%
-    #     dplyr::mutate(chrom = paste0("Chr", chrom))
-    
     # make fake 'background' genome
     if(background == T) {
         # cannot show all chromosomes and the background
@@ -195,7 +192,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
-            geom_vline(xintercept = ci, color = ifelse(ci != 1, "red", NA)) +
+            geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
             labs(x = "Genomic Position (Mb)", y = "")
     } else if(section == "CB-NILs") {
         # only plot the CB-NILs
@@ -213,7 +210,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
-            geom_vline(xintercept = ci, color = ifelse(ci != 1, "red", NA)) +
+            geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
             labs(x = "Genomic Position (Mb)", y = "")
     } else {
         
@@ -232,7 +229,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
-            geom_vline(xintercept = ci, color = ifelse(ci != 1, "red", NA)) +
+            geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
             labs(x = "Genomic Position (Mb)", y = "")
     }
     
@@ -240,28 +237,36 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
     if(is.null(bgplot)) {
         return(list(nl.pl, nilsII_sort, nilsII))
     } else {
-        # return(list(cowplot::plot_grid(nl.pl, bgplot, nrow = 1, ncol = 2, align = "h", axis = "b", rel_widths = c(1, 0.3)),
-        #             nilsII_sort, 
-        #             nilsII))
-        return(list(nl.pl,
-                    nilsII_sort, 
-                    nilsII,
-                    bgplot))
+        return(list(cowplot::plot_grid(nl.pl, bgplot, nrow = 1, ncol = 2, align = "h", axis = "b", rel_widths = c(1, 0.3)),
+                    nilsII_sort,
+                    nilsII))
+        # return(list(nl.pl,
+        #             nilsII_sort,
+        #             nilsII,
+        #             bgplot))
     }
 }
 
 # plots genotype on left and phenotype on right for dataframe, condition, trait
 # dataframe needs condition and trait columns
 plot_genopheno <- function(pheno, cond, trt, chrom, back = F, conf = 1) {
+    # source phenotype plot code
+    source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_phenotype_plots.R")
+    
+    # plot genotype
     nilgeno_plot <- nil_plot(unique(pheno$strain), chr = chrom, background = back, ci = conf, left.bound = 0)
     
+    # order phenotype in same level as genotype plot
     pheno$strain <- factor(pheno$strain, levels = unique(nilgeno_plot[[2]]$sample), 
                            labels = unique(nilgeno_plot[[2]]$sample), ordered = T)
     
-    # Plot NIL phenotypes in condition-
+    # Plot NIL phenotypes in condition
     plot <- cowplot::plot_grid(nilgeno_plot[[1]], 
                                quick_plot_breakup_flip(pheno, cond, trt) + facet_grid(~trait), nrow = 1, ncol = 2)
     
+    # return plot
     return(plot)
-    
 }
+
+# Example
+# nil_plot(c("ECA411", "ECA481"), chr = "V", ci = 10, background = T)[[1]]

@@ -1,12 +1,11 @@
 # Set of functions for assessing statistical significance of NILs
-#Function to determine if confidence interval for drug/trait mapping via GWER overlaps with NIL boundaries
-gwer <- function(cond, trt, chrom, left, right){
-    map <- drugmap %>%
-        dplyr::filter(grepl(cond, trait), chr == chrom, ci_l_pos < right, ci_r_pos > left) 
-    if(paste0(cond, ".", trt) %in% unique(map$trait)){ return(TRUE)} else { return(FALSE)}
-}
+library(tidyverse)
 
-# quick_stats function
+# Calculate TukeyHSD statistics between pairs of conditions (such strains in NIL phenotyping assay)
+# df - dataframe of phenotypes
+# trt - trait of interest
+# cond - condition of interest
+# plot - boolean whether to plot output, default is FALSE
 quick_stats <- function(df, trt, cond, plot = FALSE){
     stat_df <- df %>%
         dplyr::filter(trait == trt, condition==cond)%>%
@@ -32,13 +31,14 @@ quick_stats <- function(df, trt, cond, plot = FALSE){
     return(pwtuk)
 }
 
-#Function to get the significance of each strain pair using Tukey HSD
-get_stats <- function(dfregressed, experiment = NA, pval = 0.05) {
+# Wrapper function for `quick_stats` to do statitistics for each strain pair-wise comparison for each condition-trait sample.
+# dfregressed - dataframe of phenotypes
+# pval - what pvalue is considered significant? Defaults to 0.05
+get_stats <- function(dfregressed, pval = 0.05) {
     statsdf <- dfregressed %>%
         ungroup() %>%
         dplyr::select(condition, trait) %>%
-        dplyr::mutate(exp = experiment) %>% 
-        distinct(condition, trait, .keep_all = T)
+        dplyr::distinct(condition, trait, .keep_all = T)
     
     #Add statistical significance to each pair of strains
     for(i in 1:nrow(statsdf)) {
