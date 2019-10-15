@@ -17,11 +17,11 @@
 - background - FALSE returns the genotype of just the chromosome or all chromosomes. TRUE returns just the chrom of interest and the "genome" genotype
 - ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL
 
-*output*
-Output is a list of plots/dataframes.
-[[1]]: NIL genotype plot
-[[2]]: Simplififed dataframe of NIL genotypes to plot, ordered as they are plotted
-[[3]]: Complete NIL genotype dataframe at chromosome of interest or all chromosomes
+*output* \n
+Output is a list of plots/dataframes. \n
+[[1]]: NIL genotype plot \n
+[[2]]: Simplififed dataframe of NIL genotypes to plot, ordered as they are plotted \n
+[[3]]: Complete NIL genotype dataframe at chromosome of interest or all chromosomes \n
 
 *example*
 `nil_plot(strains = c("N2", "CB4856", "ECA411", "ECA481"), chr = "V", ci = 10, background = T)[[1]]`
