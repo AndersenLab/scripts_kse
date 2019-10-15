@@ -1,10 +1,10 @@
 # KSE Scripts for Andersen Lab
 
 ## NIL_genotype_plots.R
-**To plot genotypes of N2/CB NILs using WGS data from the Andersen Lab.**
+*To plot genotypes of N2/CB NILs using WGS data from the Andersen Lab.*
 
 ### nil_plot(strains, chr, ...)
-*Options*
+__**Options**__
 - strains - vector of strain names 
 - chr - NIL chromosome
 - left.cb - if looking at NIL breakups, this number corresponds to the left flank for CB4856 NILs
