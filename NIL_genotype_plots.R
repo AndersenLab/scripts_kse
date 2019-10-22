@@ -4,6 +4,10 @@ library(ggplot2)
 #load nilgenos
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/nilgeno.Rda")
 
+# load RIAIL genotypes
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/rilgeno.Rda")
+
+
 # df - nil genotype df in segment format
 # chr - NIL chromosome
 # left.cb - if looking at NIL breakups, this number corresponds to the left flank for CB4856 NILs
@@ -268,5 +272,60 @@ plot_genopheno <- function(pheno, cond, trt, chrom, back = F, conf = 1) {
     return(plot)
 }
 
-# Example
-# nil_plot(c("ECA411", "ECA481"), chr = "V", ci = 10, background = T)[[1]]
+# Function to plot RIL genotypes based on WGS data from 20170327 - 
+# includes 1200 strains, all of set 1 and set 2 and "E" strains (not set3?)
+# default plots all chromosomes, you can provide vector of chromosomes to plot
+# must supply either a vector of strains or a strain set (1 or 2)
+# can add strain labels with strain_label = T
+plot_rilgeno <- function(strains = NA, chr = c("I", "II", "III", "IV", "V", "X"), strainset = NA, theme_size = 12, strain_label = F) {
+    # if set != NA, plot all RILs in the set
+    if(!is.na(strainset)) {
+        if(strainset %in% c(1, 2)) {
+            df <- rilgeno %>%
+                dplyr::filter(chrom %in% chr, set == strainset)
+        } else {
+            stop("Error. Must supply either vector of strains or strain set (1 or 2)")
+        }
+    } else {
+        if(length(strains) == 1 && is.na(strains)) {
+            stop("Error. Must supply either vector of strains or strain set (1 or 2)")
+        } else {
+            df <- rilgeno %>%
+                dplyr::filter(chrom %in% chr, sample %in% strains)
+        }
+    }
+    
+    # add or remove strain labels, depending on flag
+    if(strain_label == T) {
+        df %>%
+            ggplot(.)+
+            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
+            facet_grid(~chrom, scales = "free",  space = "free")+
+            scale_color_manual(values=c("N2"="orange","CB4856"="blue"))+
+            theme_bw(theme_size) +
+            theme(axis.text = element_text(color="black"),
+                  axis.title = element_text(face="bold", color="black"),
+                  strip.text = element_text(face = "bold", color = "black"),
+                  legend.position = "none",
+                  panel.grid = element_blank()) +
+            labs(x = "Genomic Position (Mb)", y = "")
+    } else {
+        df %>%
+            ggplot(.)+
+            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
+            facet_grid(~chrom, scales = "free",  space = "free")+
+            scale_color_manual(values=c("N2"="orange","CB4856"="blue"))+
+            theme_bw(theme_size) +
+            theme(axis.text.x = element_text(color="black"),
+                  axis.text.y = element_blank(),
+                  axis.ticks.y = element_blank(),
+                  axis.title = element_text(face="bold", color="black"),
+                  strip.text = element_text(face = "bold", color = "black"),
+                  legend.position = "none",
+                  panel.grid = element_blank()) +
+            labs(x = "Genomic Position (Mb)", y = "")
+    }
+    
+}
+
+

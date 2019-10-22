@@ -96,7 +96,7 @@ calc_pc_noreps <- function(pheno) {
         tidyr::gather(trait, phenotype, -strain) %>%
         dplyr::mutate(trait = gsub("Comp.", "PC", trait),
                       phenotype = phenotype) %>%
-        tidyr::separate(trait, into = c("condition", "trait"), by = "_") %>%
+        tidyr::separate(trait, into = c("condition", "trait"), sep = "_") %>%
         dplyr::mutate(phenotype = as.numeric(phenotype))
     
     return(list(pca_obj, PCpheno))
@@ -135,7 +135,7 @@ predict_pc <- function(pheno, pca_obj, keep = length(unique(pheno$trait))) {
         tidyr::gather(trait, phenotype, -c(round:strain)) %>%
         dplyr::mutate(trait = gsub("Comp.", "PC", trait),
                       phenotype = phenotype) %>%
-        tidyr::separate(trait, into = c("condition", "trait"), by = "_") %>%
+        tidyr::separate(trait, into = c("condition", "trait"), sep = "_") %>%
         dplyr::mutate(phenotype = as.numeric(phenotype))
     
     return(pcaout)

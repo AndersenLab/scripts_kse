@@ -4,6 +4,7 @@
 *To plot genotypes of N2/CB NILs using WGS data from the Andersen Lab.*
 
 ### nil_plot(strains, chr, ...)
+
 **Options**
 - strains - vector of strain names 
 - chr - NIL chromosome
@@ -17,7 +18,7 @@
 - background - FALSE returns the genotype of just the chromosome or all chromosomes. TRUE returns just the chrom of interest and the "genome" genotype
 - ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL
 
-**Output**
+**Output**  
 Output is a list of plots/dataframes.  
 [[1]]: NIL genotype plot  
 [[2]]: Simplififed dataframe of NIL genotypes to plot, ordered as they are plotted  
@@ -29,6 +30,7 @@ Output is a list of plots/dataframes.
 
 ### plot_genopheno(pheno, cond, trt, chrom)
 Use with `NIL_phenotype_plots.R` to create side-by-side plots of NIL genotypes and phenotypes
+
 **Options**
 - pheno - dataframe of phenotypes
 - cond - drug condition
@@ -37,11 +39,27 @@ Use with `NIL_phenotype_plots.R` to create side-by-side plots of NIL genotypes a
 - back - show the NIL background (genotype of parental background)? Default FALSE
 - conf- default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL
 
-**Output**
+**Output**  
 Returns a plot of NIL phenotype/genotype.
 
 **Example**  
 `plot_genopheno(pheno = regressed_df, cond = "zinc", trt = "mean.EXT", chrom = "V", back = T, conf = 10)`
+
+### plot_rilgeno(strains, chr, strainset) 
+Function to plot RIL genotypes based on WGS data from 20170327 - includes 1200 strains, all of set 1 and set 2 and "E" strains (not set3?). Default plots all chromosomes, you can provide vector of chromosomes to plot. Must supply *either* a vector of strains *or* a strain set (1 or 2).
+
+**Options**
+- strains - vector of strains to plot
+- chr - vector of chromosomes to include, default is all
+- strainset - can use ***instead of*** `strains` to plot all srains in set 1 or set 2 (not set 3)
+- theme_size - size of plot theme (text etc)
+- strain_label - boolean to include strain names on plot, default to FALSE
+
+**Output**
+Returns plot of RIAIL genotypes
+
+**Example**
+`plot_rilgeno(chr = "III", strainset = 2, strainl_label = FALSE)`
 
 ---
 
@@ -50,6 +68,7 @@ Returns a plot of NIL phenotype/genotype.
 
 ### quick_plot(df, cond, pltrt)
 Quickly plot NIL phenotype. N2 will be colored orange and CB blue (NILs are grey)
+
 **Options**
 - df - dataframe of NIL phenotype (from sorter)
 - cond - condition to plot
@@ -59,7 +78,7 @@ Quickly plot NIL phenotype. N2 will be colored orange and CB blue (NILs are grey
 - titlesize - size of titles in plot, defalt is 14
 - pointsize - size of points in plot, default is 0.5
 
-**Output**
+**Output**  
 Returns plot of NIL phenotypes (strain on x axis and phenotype on y axis)
 
 **Example**  
@@ -77,7 +96,7 @@ Quickly plot NIL phenotype. N2 will be colored orange and CB blue (NILs are grey
 - titlesize - size of titles in plot, defalt is 14
 - pointsize - size of points in plot, default is 0.5
 
-**Output**
+**Output**  
 Returns plot of NIL phenotypes (strain on y axis and phenotype on x axis)
 
 **Example**  
@@ -90,7 +109,7 @@ Plot all QTL from linkagemapping for several traits/conditions (like Figure 1 fr
 - annotatedmap - annotated mapping (result from `linkagemapping::annotate_lods()`)
 - nils - buggy, might not work. Supply a dataframe of nil genotype information as `ci_l_pos` and `ci_r_pos` define the region of the NIL. Will be plotted as a red rectangle on the plot.
 
-**Output**
+**Output**  
 Plot with positions of multiple QTL as a dot (peak marker) and line (confidence interval)
 
 **Example**  
@@ -109,7 +128,7 @@ Plot phenotype x genotype splits for RIAILs
 - titlesize - size of titles in plot, defalt is 16
 - pointsize - size of points in plot, default is 0.5
 
-**Output**
+**Output**  
 Plot phenotype (y axis) by genotype (x axis) for RIAILs
 
 **Example**  
@@ -128,7 +147,7 @@ Plot phenotype x genotype splits for RIAILs, including N2/CB parents!
 - titlesize - size of titles in plot, defalt is 16
 - pointsize - size of points in plot, default is 0.5
 
-**Output**
+**Output**  
 Same as `pxgplot_kt` but includes facet of parents AND RIAILs
 
 **Example**  
@@ -144,7 +163,7 @@ Plot linkagemapping results
 - linesize - changes the size of the line of the linkagemap (important mostly for generating large figures for posters), default is 1
 - col - color of confidence interval, default is blue
 
-**Output**
+**Output**  
 LOD plot for linkage mapping trait
 
 **Example**  
@@ -164,7 +183,7 @@ Calculate TukeyHSD statistics between pairs of conditions (such strains in NIL p
 - cond - condition of interest
 - plot - boolean whether to plot output, default is FALSE
 
-**Output**
+**Output**  
 Returns matrix of statistical significance for all pairwise comparisons in dataframe
 
 **Example**  
@@ -177,7 +196,7 @@ Wrapper function for `quick_stats` to do statitistics for each strain pair-wise 
 - dfregressed - dataframe of phenotypes
 - pval - what pvalue is considered significant? Defaults to 0.05
 
-**Output**
+**Output**  
 Returns dataframe of statistical significance for all pairwise comparisons, tidied with `broom::tidy` and TRUE/FALSE for significance, based on the given p-value
 
 **Example**  
@@ -194,9 +213,9 @@ Calculate principal components from phenotype dataframe with replicates (i.e. NI
 **Options**
 - pheno - dataframe of phenotypes
 
-**Output**
-Returns a list of:
-[[1]] PCA object (including loadings)
+**Output**  
+Returns a list of:  
+[[1]] PCA object (including loadings)  
 [[2]] PCA phenotypes (only including PCs that account for 90% of variation in phenotype)
 
 **Example**  
@@ -208,9 +227,9 @@ Calculate principal components from phenotype dataframe with no replicates (i.e.
 **Options**
 - pheno - dataframe of phenotypes
 
-**Output**
-Returns a list of:
-[[1]] PCA object (including loadings)
+**Output**  
+Returns a list of:  
+[[1]] PCA object (including loadings)  
 [[2]] PCA phenotypes (only including PCs that account for 90% of variation in phenotype)
 
 **Example**  
@@ -224,7 +243,7 @@ Predicts PCA phenotypes given loadings from another pca object (use for applying
 - pca_oject - pca object, output [[1]] from calc_pc_reps or calc_pc_noreps
 - keep - how many PCs to keep? default is number of traits in pheno
 
-**Output**
+**Output**  
 Returns dataframe of PC phenotypes
 
 **Example**  
@@ -232,48 +251,72 @@ Returns dataframe of PC phenotypes
 
 ---
 
-## RIL_genotype_plots.R
-
-### plot_rilgeno(strains, chr, strainset) 
-Function to plot RIL genotypes based on WGS data from 20170327 - includes 1200 strains, all of set 1 and set 2 and "E" strains (not set3?). default plots all chromosomes, you can provide vector of chromosomes to plot. must supply either a vector of strains or a strain set (1 or 2). can add strain labels with strain_label = T
-
----
-
-## qtl_narrow.R
+## NIL_narrowing.R
 
 ### qtl_narrow(query)
-Wrapper function for `cegwas::query_vcf()` to only apply for N2/CB variants and add GO terms and gene descriptions
-*are these the most up to date go and descriptions???*
+Wrapper function for `cegwas::query_vcf()` to show variants between N2/CB within a QTL interval and add gene functions/GO terms
 
----
+**Options**
+- query - region of interest (III:1000-700000)
+- sev - vector of severity to include (MODIFIER, LOW, MODERATE, HIGH), default is all
 
-## plot_primers.R
+**Output**  
+Dataframe with all variants in region, annotated with gene description, GO term, and whether CB is alt/ref
+
+**Example**  
+`qtl_narrow("III:1000-700000", sev = c("MODERATE", "HIGH"))`
+
+### findNILs(input)
+Script to find NILs in your area of interest. Input a region larger than your QTL and the script will be able to tell you if we already have NILs here.
+
+**Options**
+- input - chromosome region ("IV:5000000-8000000")
+
+**Output**  
+Returns a list of  
+[1] NIL genotypes on chrom of interest with region bounded.  
+[2] NIL genotypes on all chrom  
+[3] dataframe of NIL genotype  
+
+**Example**  
+`findNILs(input = "IV:5000000-8000000")`
 
 ### plot_primers(primer_pairs)
-Script to plot NIL genotype and primer locations
-- primer pairs - pair of primers in the format "oECAXXX-oECAXXX", can be multiple (vector)
+Function to plot NIL genotype and primer locations
+
+**Options**
+- primer_pairs - pair of primers in the format "oECAXXX-oECAXXX", can be multiple (vector)
 - NIL - ECAxxx strain name to plot genotype (N2 is default)
 - RIL = false. If true, will plot RILs instead of NILs
 - chr = default show all chr but you can just choose one (or multiple)
 
+**Output**  
+Returns plot with locations of primers and genotypes of NIL/RIAILs
+
+**Example**  
+`plot_primers(primer_pairs = c("oECA1148-oECA1147", "oECA1408-oECA1409", "oECA1141-oECA1142"), NIL = "ECA1065")`
+
+### genetic_distance(region)
+Estimate centimorgan distance between two physical positions
+
+**Options**
+- input: region in format of `chr:pos1-pos2`
+
+### p2gmap(chr, pos)
+function to estimate genetic position from a physical genomic positon 
+- chr = chromosome
+- pos = basepair position
+
+
 ---
+
+
 
 ## gene_model_plot.R
 
 ### gene_model(genename, WBID)
 Provide genename or Wormbase ID to plot gene model (exons/introns)
 - can provide color with `gene_color = "purple"` and `intron_color = "black"` and `utr3_color = "gray60"` and `utr5_color = "gray60"`
-
----
-
-## findNILs.R
-
-### findNILs(input)
-Script to find NILs in your area of interest. Input a region larger than your QTL and the script will be able to tell you if we already have NILs here.
-- INPUT: chromosome region ("IV:5000000-8000000")
-- OUTPUT: list of [1] NIL genotypes on chrom of interest with region bounded.
-				  [2] NIL genotypes on all chrom
-				  [3] dataframe of NIL genotype
 
 ---
 
@@ -305,20 +348,6 @@ Script to find NILs in your area of interest. Input a region larger than your QT
 
 ## linkagemapping.R
 
----
-
-## physical2genetic_map.R
-Script can be used to find the genetic position of QTL in RIAILs. 
-Can also be used to find the expected recombination frequency between N2/CB
-
-### p2gmap(chr, pos)
-function to estimate genetic position from a physical genomic positon 
-- chr = chromosome
-- pos = basepair position
-
-## genetic_distance(region)
-estimate centimorgan distance between two physical positions
-- input: region in format of `chr:pos1-pos2`
 
 ---
 
