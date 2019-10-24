@@ -131,7 +131,7 @@ predict_pc <- function(pheno, pca_obj, keep = length(unique(pheno$trait))) {
     
     pcaout <- pcapredict[,1:keep] %>%
         dplyr::mutate(well = rownames(.)) %>%
-        tidyr::separate(well, into = c("round", "assay", "plate", "row", "col", "strain"), by = "-") %>%
+        tidyr::separate(well, into = c("round", "assay", "plate", "row", "col", "strain"), sep = "-") %>%
         tidyr::gather(trait, phenotype, -c(round:strain)) %>%
         dplyr::mutate(trait = gsub("Comp.", "PC", trait),
                       phenotype = phenotype) %>%
