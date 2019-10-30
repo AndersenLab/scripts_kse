@@ -21,6 +21,9 @@ ui <- fluidPage(
             # V2 or V3 assay
             shiny::radioButtons(inputId = "version", label = "HTA Version:", choiceNames = c("v2 (96h)", "v3 (48h)"), choiceValues = c("v2", "v3"), inline = T),
             
+            # bacteria or lysate
+            shiny::radioButtons(inputId = "food", label = "Food type:", choiceNames = c("Lysate", "HB101 (OD 100)"), choiceValues = c("Lysate", "HB101 (OD 100)"), inline = T),
+            
             # dose response? Default is false
             shiny::checkboxInput(inputId = "dose", label = "Dose response?", value = F),
             
@@ -70,6 +73,10 @@ ui <- fluidPage(
                                      
                                      # dilutions dataframe
                                      h2("Plate Dilutions"),
+                                     conditionalPanel(condition = "input.version == 'v2'", 
+                                                      h5("Add 50 uL food + drug to wells.")),
+                                     conditionalPanel(condition = "input.version == 'v3'", 
+                                                      h5("Add 25 uL food + drug to wells with 50 uL worms.")),
                                      shiny::uiOutput("dilutions"),
                                      br(),
                                      
@@ -334,7 +341,9 @@ server <- function(input, output, session) {
                               total_drug = sum(drug_need),
                               dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
                 dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution, total_drug) %>%
-                dplyr::distinct(drug, .keep_all = T) 
+                dplyr::distinct(drug, .keep_all = T) %>%
+                dplyr::select(Drug = drug, Diluent = diluent, `Stock Conc. (mM)` = `drugstock (mM)`, `Working Conc. (mM)` = `intermediate_conc (mM)`,
+                              Dilution = dilution_factor, `Total Drug (uL)` = total_drug)
             
             # distinct by drug only - but keep any dilutions if there are
             
@@ -342,7 +351,7 @@ server <- function(input, output, session) {
             drugplate <- dose %>%
                 dplyr::mutate(dilution_factor = paste0("1:", drugstock/intconc),
                               dilution_factor = ifelse(dilution_factor == "1:1", "Stock Concentration", dilution_factor)) %>%
-                dplyr::select(condition = drug, diluent, dilution_factor, concentration_uM = wellconc, plates = drugplates, lysate, drug_ul, dil_ul)  %>%
+                dplyr::select(condition = drug, diluent, dilution_factor, concentration_uM = wellconc, plates = drugplates, lysate, dil_ul, drug_ul)  %>%
                 dplyr::arrange(concentration_uM) %>%
                 dplyr::mutate(concentration_uM = as.character(concentration_uM))
             
@@ -351,7 +360,9 @@ server <- function(input, output, session) {
             allplates <- drugplate %>%
                 dplyr::mutate(drug_ul = round(drug_ul, digits = 2),
                               dil_ul = round(dil_ul, digits = 2),
-                              lysate = round(lysate, digits = 2))
+                              lysate = round(lysate, digits = 2)) %>%
+                dplyr::select(Condition = condition, Diluent = diluent, `Concentration (uM)` = concentration_uM, Plates = plates, `Food (uL)` = lysate,
+                              `Diluent (uL)` = dil_ul, `Drug (uL)` = drug_ul)
             
             # calculate lysate needs
             plates <- ceiling(sum(dose$wells) / 96)
@@ -431,14 +442,16 @@ server <- function(input, output, session) {
                               total_drug = sum(drug_need),
                               dilution = ifelse(dilution == "1:1", "Do not dilute.", dilution)) %>%
                 dplyr::select(drug, diluent, `drugstock (mM)` = drugstock, `intermediate_conc (mM)` = intconc, dilution_factor = dilution, total_drug) %>%
-                dplyr::distinct() 
+                dplyr::distinct() %>%
+                dplyr::select(Drug = drug, Diluent = diluent, `Stock Conc. (mM)` = `drugstock (mM)`, `Working Conc. (mM)` = `intermediate_conc (mM)`,
+                              Dilution = dilution_factor, `Total Drug (uL)` = total_drug)
             
             drugplate <- dose %>%
-                dplyr::select(condition = drug, diluent, concentration_uM = wellconc, plates = drugplates, lysate, drug_ul, dil_ul) %>%
+                dplyr::select(condition = drug, diluent, concentration_uM = wellconc, plates = drugplates, lysate, dil_ul, drug_ul) %>%
                 dplyr::mutate(concentration_uM = as.character(concentration_uM))
             
             controlplate <- dose %>%
-                dplyr::select(condition = diluent, diluent, concentration_uM = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
+                dplyr::select(condition = diluent, diluent, concentration_uM = wellconc, plates = controlplates, lysate, dil_ul = control_dil_ul, drug_ul = control_drug_ul) %>%
                 dplyr::mutate(diluent = "None",
                               concentration_uM = "1%") %>%
                 dplyr::filter(plates > 0)
@@ -447,45 +460,83 @@ server <- function(input, output, session) {
                 dplyr::full_join(controlplate) %>%
                 dplyr::mutate(drug_ul = round(drug_ul, digits = 2),
                               dil_ul = round(dil_ul, digits = 2),
-                              lysate = round(lysate, digits = 2))
+                              lysate = round(lysate, digits = 2)) %>%
+                dplyr::select(Condition = condition, Diluent = diluent, `Concentration (uM)` = concentration_uM, Plates = plates, `Food (uL)` = lysate,
+                              `Diluent (uL)` = dil_ul, `Drug (uL)` = drug_ul)
             
             # calculate lysate needs
             plates <- sum(dose$drugplates) + sum(dose$controlplates)
         }
         
-        # lysate
-        if(input$version == "v2") {
-            # make 10 mg/mL for 96 hours
-            #If lysate is exact, add another tube
-            lysate <- sum(allplates$lysate)
-            if((lysate %% 10000) == 0) {
-                lysate <- lysate + 10000
+        # lysate or bacteria?
+        if(input$food == "Lysate") {
+            # lysate
+            if(input$version == "v2") {
+                # make 10 mg/mL for 96 hours
+                #If lysate is exact, add another tube
+                lysate <- sum(allplates$`Food (uL)`)
+                if((lysate %% 10000) == 0) {
+                    lysate <- lysate + 10000
+                }
+                
+                lysate_mix <- (paste0("Total lysate mix needed: ", round(lysate / 1000, digits = 2), " mL (10 mg/mL), actually make: ", round(ceiling(lysate / 10000)*10, digits = 2), " mL"))
+                lysate_tubes <- (paste0("Number of lysate tubes needed: ", ceiling(lysate / 10000)))
+                lysate <- round(ceiling(lysate / 10000) *10000, digits = 2)
+                lysate_K <- (paste0("Add ",  round(lysate / 10000 * 9, digits = 2), " mL of K medium to lysate."))
+                kan <- (paste0("Add ", round(50*lysate/80000, digits = 2), " uL of Kanamycin to lysate mix."))
+                
+                lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
+            } else if(input$version == "v3") {
+                # make 15 mg/mL which will be diluted 1:3 in the well
+                #If lysate is exact, add another tube
+                lysate <- sum(allplates$`Food (uL)`)
+                if((lysate %% 6666) == 0) {
+                    lysate <- lysate + 6666
+                }
+                
+                lysate_mix <- (paste0("Total lysate mix needed: ", round(lysate / 1000, digits = 2), " mL (15 mg/mL), actually make: ", round(ceiling(lysate / 6666)*6.666, digits = 2), " mL"))
+                lysate_tubes <- (paste0("Number of lysate tubes needed: ", round(ceiling(lysate / 6666), digits = 2)))
+                lysate <- round(ceiling(lysate / 6666) *6666, digits = 2)
+                lysate_K <- (paste0("Add ",  round(lysate/1000 - ceiling(lysate / 6666), digits = 2), " mL of K medium to lysate."))
+                kan <- (paste0("Add ", round(3*50*lysate/80000, digits = 2), " uL of Kanamycin to lysate mix."))
+                
+                lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
             }
-            
-            lysate_mix <- (paste0("Total lysate mix needed: ", round(lysate / 1000, digits = 2), " mL (10 mg/mL), actually make: ", round(ceiling(lysate / 10000)*10, digits = 2), " mL"))
-            lysate_tubes <- (paste0("Number of lysate tubes needed: ", ceiling(lysate / 10000)))
-            lysate <- round(ceiling(lysate / 10000) *10000, digits = 2)
-            lysate_K <- (paste0("Add ",  round(lysate / 10000 * 9, digits = 2), " mL of K medium to lysate."))
-            kan <- (paste0("Add ", round(50*lysate/80000, digits = 2), " uL of Kanamycin to lysate mix."))
-            
-            lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
-        } else if(input$version == "v3") {
-            # make 15 mg/mL which will be diluted 1:3 in the well
-            #If lysate is exact, add another tube
-            lysate <- sum(allplates$lysate)
-            if((lysate %% 6666) == 0) {
-                lysate <- lysate + 6666
+        } else {
+            # bacteria -- OD 100 to OD 10
+            if(input$version == "v2") {
+                # make OD 20 for 96 hours
+                #If lysate is exact, add another tube
+                lysate <- sum(allplates$`Food (uL)`)
+                if((lysate %% 5000) == 0) {
+                    lysate <- lysate + 5000
+                }
+                
+                lysate_mix <- (paste0("Total HB101 needed: ", round(lysate / 1000, digits = 2), " mL (OD 20), actually make: ", round(ceiling(lysate / 5000)*5, digits = 2), " mL"))
+                lysate_tubes <- (paste0("Number of HB101 tubes needed: ", ceiling(lysate / 5000)))
+                lysate <- round(ceiling(lysate / 5000) *5000, digits = 2)
+                lysate_K <- (paste0("Add ",  round(lysate / 5000 * 9, digits = 2), " mL of K medium to HB101"))
+                kan <- (paste0("Add ", round(50*lysate/80000, digits = 2), " uL of Kanamycin to HB101."))
+                
+                lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
+            } else if(input$version == "v3") {
+                # make OD 30 which will be diluted 1:3 in the well
+                #If bacteria is exact, add another tube
+                lysate <- sum(allplates$`Food (uL)`)
+                if((lysate %% 3333) == 0) {
+                    lysate <- lysate + 3333
+                }
+                
+                lysate_mix <- (paste0("Total HB101 needed: ", round(lysate / 1000, digits = 2), " mL (OD 30), actually make: ", round(ceiling(lysate / 3333)*3.3333, digits = 2), " mL"))
+                lysate_tubes <- (paste0("Number of HB101 tubes needed: ", round(ceiling(lysate / 3333), digits = 2)))
+                lysate <- round(ceiling(lysate / 3333) *3333, digits = 2)
+                lysate_K <- (paste0("Add ",  round(lysate/1000 - ceiling(lysate / 3333), digits = 2), " mL of K medium to HB101"))
+                kan <- (paste0("Add ", round(3*50*lysate/80000, digits = 2), " uL of Kanamycin to HB101."))
+                
+                lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
             }
-            
-            lysate_mix <- (paste0("Total lysate mix needed: ", round(lysate / 1000, digits = 2), " mL (15 mg/mL), actually make: ", round(ceiling(lysate / 6666)*6.666, digits = 2), " mL"))
-            lysate_tubes <- (paste0("Number of lysate tubes needed: ", round(ceiling(lysate / 6666), digits = 2)))
-            lysate <- round(ceiling(lysate / 6666) *6666, digits = 2)
-            lysate_K <- (paste0("Add ",  round(lysate/1000 - ceiling(lysate / 6666), digits = 2), " mL of K medium to lysate."))
-            kan <- (paste0("Add ", round(3*50*lysate/80000, digits = 2), " uL of Kanamycin to lysate mix."))
-            
-            lysate_dilutions <- c(lysate_mix, lysate_tubes, lysate_K, kan)
-            
         }
+
         
         return(list(allplates, lysate_dilutions, drugdilute))
 
@@ -505,8 +556,9 @@ server <- function(input, output, session) {
         lysate_instructions <- dosetable[[2]]
 
         tagList(
-            h2("Lysate Setup"),
+            h2("Food Setup"),
             h6(glue::glue("Version: {input$version}")),
+            h6(glue::glue("Food: {input$food}")),
             h6(lysate_instructions[1]),
             h6(lysate_instructions[2]),
             h6(lysate_instructions[3]),

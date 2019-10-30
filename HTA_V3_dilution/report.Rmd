@@ -10,6 +10,8 @@ mainfont: Calibri Light
 
 glue::glue("Version: {version}")
 cat('\n')
+glue::glue("Food: {food}")
+cat('\n')
 glue::glue("Dose response: {dose}")
 cat('\n')
 glue::glue("Minimum amount to pipette: {min}")
@@ -17,7 +19,7 @@ cat('\n')
 glue::glue("Number of drugs: {drugs}")
 cat('\n')
 if(dose == T) {
-    drug_inputs <- data.frame(drug_name = NA, drug_stock = NA, control_name = NA, drug_dose = NA, drug_plates = NA, wells = NA)
+    drug_inputs <- data.frame(drug = NA, drugstock = NA, diluent = NA, drugdose = NA, drugplates = NA, wells = NA)
     for(d in 1:drugs) {
         drug_inputs <- rbind(drug_inputs, c(get(glue::glue("drug_name{d}")),
                              get(glue::glue("drug_stock{d}")),
@@ -27,9 +29,10 @@ if(dose == T) {
                              get(glue::glue("wells{d}"))))
     }
     drug_inputs <- drug_inputs %>%
-        na.omit()
+        na.omit() %>%
+        dplyr::select(Drug = drug, `Stock Conc. (mM)` = drugstock, Diluent = diluent, `Drug Dose (uM)` = drugdose, `Drug Plates` = drugplates, Wells = wells)
 } else {
-    drug_inputs <- data.frame(drug_name = NA, drug_stock = NA, control_name = NA, drug_dose = NA, drug_plates = NA, control_plates = NA, wells = NA)
+    drug_inputs <- data.frame(drug = NA, drugstock = NA, diluent = NA, drugdose = NA, drugplates = NA, controlplates = NA, wells = NA)
     for(d in 1:drugs) {
         drug_inputs <- rbind(drug_inputs, c(get(glue::glue("drug_name{d}")),
                              get(glue::glue("drug_stock{d}")),
@@ -40,19 +43,15 @@ if(dose == T) {
                              get(glue::glue("wells{d}"))))
     }
     drug_inputs <- drug_inputs %>%
-        na.omit()
+        na.omit() %>%
+        dplyr::select(Drug = drug, `Stock Conc. (mM)` = drugstock, Diluent = diluent, `Drug Dose (uM)` = drugdose, `Drug Plates` = drugplates, `Control Plates` = controlplates, Wells = wells)
 }
 
 # print drug inputs
 knitr::kable(drug_inputs, format = "markdown")
 
 cat('\n')
-
-if(dose == T) {
-    cat("\n\n\\pagebreak\n")
-} else {
-    
-}
+cat("\n\n\\pagebreak\n")
 
 
 ```
@@ -63,7 +62,7 @@ dosetable <- calculate_dose()
 
 ```
 
-# Lysate Setup
+# Food Setup
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
 
 lysate_instructions <- dosetable[[2]]
@@ -80,22 +79,30 @@ print(lysate_instructions[4])
 # Drug Dilutions
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
 
-knitr::kable(dosetable[[3]], format = "markdown")
+rename <- dosetable[[3]]
+knitr::kable(rename, format = "markdown")
 
 ```
 
 # Plate Dilutions
 ```{r, echo = F, warning = F, message = F, results = 'asis'}
 
+if(version == "v2") {
+    print("Add 50 uL food + drug to wells.")
+} else {
+    print("Add 25 uL food + drug to wells with 50 uL worms.")
+}
+
 if(dose == T) {
     for(d in 1:drugs) {
         table <- dosetable[[1]] %>%
             dplyr::mutate(condition = as.character(condition)) %>%
-            dplyr::filter(condition == get(glue::glue("drug_name{d}")))
+            dplyr::filter(condition == get(glue::glue("drug_name{d}"))) 
         print(knitr::kable(table, format = "markdown"))
     }
 } else {
-    knitr::kable(dosetable[[1]], format = "markdown")
+    table <- dosetable[[1]]
+    knitr::kable(table, format = "markdown")
 }
 
 ```
