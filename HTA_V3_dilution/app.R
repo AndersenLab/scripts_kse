@@ -154,7 +154,7 @@ server <- function(input, output, session) {
                             shiny::numericInput(inputId = glue::glue("drugplates{i}"), label = "Number of drug plates:", min = 1, value = 1),
                             
                             # number of control plates
-                            shiny::numericInput(inputId = glue::glue("controlplates{i}"), label = "Number of control plates:", min = 1, value = 1),
+                            shiny::numericInput(inputId = glue::glue("controlplates{i}"), label = "Number of control plates:", min = 0, value = 1),
                             
                             # number of wells per condition per plate
                             shiny::numericInput(inputId = glue::glue("wells{i}"), label = "Number of wells per condition/plate:", min = 1, max = 96, value = 96)
@@ -440,7 +440,8 @@ server <- function(input, output, session) {
             controlplate <- dose %>%
                 dplyr::select(condition = diluent, diluent, concentration_uM = wellconc, plates = controlplates, lysate, drug_ul = control_drug_ul, dil_ul = control_dil_ul) %>%
                 dplyr::mutate(diluent = "None",
-                              concentration_uM = "1%")
+                              concentration_uM = "1%") %>%
+                dplyr::filter(plates > 0)
             
             allplates <- drugplate %>%
                 dplyr::full_join(controlplate) %>%
