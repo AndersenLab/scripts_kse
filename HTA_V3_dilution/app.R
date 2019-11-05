@@ -451,10 +451,17 @@ server <- function(input, output, session) {
                 dplyr::mutate(concentration_uM = as.character(concentration_uM))
             
             controlplate <- dose %>%
-                dplyr::select(condition = diluent, diluent, concentration_uM = wellconc, plates = controlplates, lysate, dil_ul = control_dil_ul, drug_ul = control_drug_ul) %>%
+                dplyr::select(condition = diluent, diluent, concentration_uM = wellconc, plates = controlplates, lysate, dil_ul = control_dil_ul, drug_ul = control_drug_ul, wells) %>%
                 dplyr::mutate(diluent = "None",
-                              concentration_uM = "1%") %>%
-                dplyr::filter(plates > 0)
+                              concentration_uM = "1%",
+                              total_volume = ifelse(input$version == "v2", 
+                                                    plates*wells*50*1.1,
+                                                    plates*wells*25*1.1),
+                              lysate = 0.99*total_volume,
+                              drug_ul = 0,
+                              dil_ul = 0.01*total_volume) %>%
+                dplyr::filter(plates > 0) %>%
+                dplyr::select(condition, diluent, concentration_uM , plates, lysate, dil_ul, drug_ul)
             
             allplates <- drugplate %>%
                 dplyr::full_join(controlplate) %>%

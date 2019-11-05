@@ -16,7 +16,7 @@ findNILs <- function(input) {
     library(linkagemapping)
     
     # Source nil genotype file
-    source("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/scripts_kse/NIL_genotype_plots.R")
+    source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_genotype_plots.R")
     
     # Get chromosome region
     chr <- stringr::str_split_fixed(input, ":", 2)[1]
@@ -70,3 +70,6 @@ findNILs <- function(input) {
 }
 
 findNILs("V:7e6-12e6")[[1]]
+
+
+nil_plot(c("N2", "CB4856", "ECA238", "ECA1059"), "V", left.bound = 0, all.chr = T)[[1]]
