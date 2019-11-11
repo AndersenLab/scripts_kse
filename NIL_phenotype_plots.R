@@ -88,18 +88,20 @@ all_lod_plots <- function(annotatedmap, nils = NULL) {
         na.omit()
     
     newmap <- newmap %>%
-        dplyr::mutate(condition = stringr::str_split_fixed(.$trait, "\\.", 2)[,1]) %>%
-        dplyr::mutate(trait = stringr::str_split_fixed(.$trait, "\\.", 2)[,2])
+        dplyr::mutate(condition = stringr::str_split_fixed(.$trait, "\\.", 2)[,1],
+                      trait = stringr::str_split_fixed(.$trait, "\\.", 2)[,2],
+                      n2res = ifelse(eff_size < 0, "yes", "no"))
     
     faketrait <- newmap$trait[1]
+    fakecond <- newmap$condition[1]
     #Set chromosome boundaries
     newrows <- newmap[1,] 
-    newrows[1,] = c(NA,"I",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,14972282, NA)
-    newrows[2,] = c(NA,"II",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,15173999, NA)
-    newrows[3,] = c(NA,"III",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,13829314, NA)
-    newrows[4,] = c(NA,"IV",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17450860, NA)
-    newrows[5,] = c(NA,"V",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,20914693, NA)
-    newrows[6,] = c(NA,"X",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17748731, NA)
+    newrows[1,] = c(NA,"I",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,14972282, fakecond, "yes")
+    newrows[2,] = c(NA,"II",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,15173999, fakecond, "yes")
+    newrows[3,] = c(NA,"III",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,13829314, fakecond, "yes")
+    newrows[4,] = c(NA,"IV",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17450860, fakecond, "yes")
+    newrows[5,] = c(NA,"V",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,20914693, fakecond, "yes")
+    newrows[6,] = c(NA,"X",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17748731, fakecond, "yes")
     newrows$ci_l_pos <- as.numeric(newrows$ci_l_pos)
     newrows$ci_r_pos <- as.numeric(newrows$ci_r_pos)
     newrows$pos <- as.numeric(newrows$pos)
@@ -110,11 +112,14 @@ all_lod_plots <- function(annotatedmap, nils = NULL) {
         ggplot(newmap)+
             aes(x=pos/1E6, y=trait)+
             theme_bw() +
-            viridis::scale_fill_viridis(name = "LOD") + viridis::scale_color_viridis(name = "LOD") +
+            viridis::scale_fill_viridis(name = "LOD") + 
+            viridis::scale_color_viridis(name = "LOD") +
             geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
             geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
-            geom_point(aes(fill=lod),colour = "black",size = 2, alpha = 1, shape = 21)+
+            geom_point(aes(fill = lod, shape = n2res), color = "black",size = 3, alpha = 1)+
+            scale_shape_manual(values = c("yes" = 24, "no" = 25)) +
             xlab("Genomic position (Mb)") + ylab("") +
+            guides(shape = FALSE) +
             theme(axis.text.x = element_text(size=10, face="bold", color="black"),
                   axis.ticks.y = element_blank(),
                   legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 10),
@@ -139,8 +144,10 @@ all_lod_plots <- function(annotatedmap, nils = NULL) {
             geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
             geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
             geom_rect(data=nils, aes(xmin = ci_l_pos/1e6, ymin = "cv.EXT", xmax = ci_r_pos/1e6, ymax = "var.TOF"), size = 2, alpha = 0.2, fill = "red")+
-            geom_point(aes(fill=lod),colour = "black",size = 2, alpha = 1, shape = 21)+
+            geom_point(aes(fill = lod, shape = n2res), color = "black",size = 3, alpha = 1)+
+            scale_shape_manual(values = c("yes" = 24, "no" = 25)) +
             xlab("Genomic position (Mb)") + ylab("") +
+            guides(shape = F) +
             theme(axis.text.x = element_text(size=10, face="bold", color="black"),
                   axis.ticks.y = element_blank(),
                   legend.title = element_text(size = 12, face = "bold"), legend.text = element_text(size = 10),

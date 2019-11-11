@@ -96,8 +96,8 @@ if(version == "v2") {
 if(dose == T) {
     for(d in 1:drugs) {
         table <- dosetable[[1]] %>%
-            dplyr::mutate(condition = as.character(condition)) %>%
-            dplyr::filter(condition == get(glue::glue("drug_name{d}"))) 
+            dplyr::mutate(Condition = as.character(Condition)) %>%
+            dplyr::filter(Condition == get(glue::glue("drug_name{d}"))) 
         print(knitr::kable(table, format = "markdown"))
     }
 } else {

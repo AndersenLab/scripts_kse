@@ -4,7 +4,7 @@ library(linkagemapping)
 library(gsheet)
 
 # Source nil genotype file
-source("~/Dropbox/AndersenLab/LabFolders/Katie/projects/chemos/scripts_kse/NIL_genotype_plots.R")
+source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_genotype_plots.R")
 
 # load gene descriptions
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_descriptions_WS273.Rda")

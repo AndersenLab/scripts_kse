@@ -181,8 +181,8 @@ server <- function(input, output, session) {
             lapply(1:input$drugs, function(d) {
                 output[[paste0('T', d)]] <- shiny::renderTable({
                     dosetable[[1]] %>%
-                        dplyr::mutate(condition = as.character(condition)) %>%
-                        dplyr::filter(condition == input[[glue::glue("drug_name{d}")]])
+                        dplyr::mutate(Condition = as.character(Condition)) %>%
+                        dplyr::filter(Condition == input[[glue::glue("drug_name{d}")]])
                 })
             })
             
