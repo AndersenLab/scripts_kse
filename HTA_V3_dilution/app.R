@@ -361,7 +361,7 @@ server <- function(input, output, session) {
                 dplyr::mutate(drug_ul = round(drug_ul, digits = 2),
                               dil_ul = round(dil_ul, digits = 2),
                               lysate = round(lysate, digits = 2)) %>%
-                dplyr::select(Condition = condition, Diluent = diluent, `Concentration (uM)` = concentration_uM, Plates = plates, `Food (uL)` = lysate,
+                dplyr::select(Condition = condition, Diluent = diluent, `Dilution Factor` = dilution_factor, `Concentration (uM)` = concentration_uM, Plates = plates, `Food (uL)` = lysate,
                               `Diluent (uL)` = dil_ul, `Drug (uL)` = drug_ul)
             
             # calculate lysate needs
