@@ -8,7 +8,7 @@ library(dplyr)
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_descriptions_WS273.Rda")
 
 #Define function to narrow QTL for given region of interest
-qtl_narrow <- function(query, sev = c("MODERATE", "HIGH")) {
+qtl_narrow <- function(query, sev = c("MODERATE", "HIGH", "LOW", "MODIFIER")) {
   
   # snpeff <- cegwas::snpeff(query)
   snpeff <- cegwas2::query_vcf(query, impact = sev, samples = "CB4856")
