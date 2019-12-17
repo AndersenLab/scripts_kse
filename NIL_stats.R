@@ -34,7 +34,7 @@ quick_stats <- function(df, trt, cond, plot = FALSE){
 # Wrapper function for `quick_stats` to do statitistics for each strain pair-wise comparison for each condition-trait sample.
 # dfregressed - dataframe of phenotypes
 # pval - what pvalue is considered significant? Defaults to 0.05
-get_stats <- function(dfregressed, pval = 0.05) {
+get_stats_TF <- function(dfregressed, pval = 0.05) {
     statsdf <- dfregressed %>%
         ungroup() %>%
         dplyr::select(condition, trait) %>%
@@ -54,4 +54,25 @@ get_stats <- function(dfregressed, pval = 0.05) {
         }
     }
     return(statsdf)
+}
+
+get_stats <- function(dfregressed) {
+    statsdf <- dfregressed %>%
+        ungroup() %>%
+        dplyr::select(condition, trait) %>%
+        dplyr::distinct(condition, trait, .keep_all = T)
+    
+    #Add statistical significance to each pair of strains
+    newdf <- NULL
+    for(i in 1:nrow(statsdf)) {
+        stats <- broom::tidy(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i])) %>%
+            dplyr::select(-term) %>%
+            dplyr::mutate(condition = statsdf$condition[i],
+                          trait = statsdf$trait[i])
+        
+        newdf <- rbind(newdf, stats)
+        
+    }
+    
+    return(newdf)
 }
