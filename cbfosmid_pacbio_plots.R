@@ -5,20 +5,20 @@ data("AllCBfosmids")
 data("AllN2fosmids")
 
 # load data
-load(CBfosmids_pacbio, file = "~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/CBfosmids_pacbio.Rda")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/CBfosmids_pacbio.Rda")
 
 # function to plot all fosmids within region in CB (mapped to CB pacbio genome)
 # chrom - chromosome
 # startpos - start position
 # endpos - end position
-plot_fosmids <- function(chrom, startpos, endpos) {
+plot_fosmids <- function(fosmid_df, chrom, startpos, endpos) {
     # which fosmids in your region?
-    fosmid_data <- CBfosmids_pacbio %>%
+    fosmid_data <- fosmid_df %>%
         dplyr::filter(chr == chrom, start > startpos, end < endpos) %>%
         dplyr::arrange(start, end)
     
     # plot
-    plot <- CBfosmids_pacbio %>%
+    plot <- fosmid_df %>%
         dplyr::filter(chr == chrom, start > startpos, end < endpos) %>%
         dplyr::arrange(start, end) %>%
         tibble::rownames_to_column(var = "row") %>%
@@ -37,7 +37,7 @@ plot_fosmids <- function(chrom, startpos, endpos) {
 }
 
 # example plotting
-plot_fosmids("V", 10e6, 11e6)[[2]]
+plot_fosmids(CBfosmids_pacbio, "V", 10e6, 11e6)[[2]]
 
 # plot only necessary (minimal) fosmids in region (overlapping ends)
 # fosmid_df - dataframe comtaining all fosmids (pacbio or old from linkage mapping)
@@ -119,6 +119,4 @@ plot_minimal_fosmids <- function(fosmid_df, chrom, startpos, endpos) {
 
 # example plotting
 plot_minimal_fosmids(CBfosmids_pacbio, "V", 10e6, 11e6)[[2]]
-plot_minimal_fosmids(AllCBfosmids, "V", 10e6, 11e6)[[2]]
-plot_minimal_fosmids(CBfosmids_pacbio, "III", 1, 800000)[[2]]
 
