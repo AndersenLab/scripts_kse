@@ -21,7 +21,7 @@ load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/rilgeno.Rda")
 # ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL - plots only on chromosome of interest (chr)
 
 nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, right.bound = 19e6, scan.range = 2e4, 
-                     all.chr=F, section = "all", background = F, ci = 1){
+                     all.chr=F, section = "all", background = F, ci = 1, elements = F, order = T){
     # # # determine if NILs are CB or N2
     nilsII_sort_type <- nilgeno %>%
         dplyr::filter(sample %in% strains) %>%
@@ -122,7 +122,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
             dplyr::filter(chrom != "MtDNA")%>%
             dplyr::left_join(.,nilsII_sort_type, by = "sample")
 
-        nilsII$sample <- factor(nilsII$sample, levels = unique(nilsII_sort$sample), labels = unique(nilsII_sort$sample), ordered = T)
+        if(order == T) {
+            nilsII$sample <- factor(nilsII$sample, levels = unique(nilsII_sort$sample), labels = unique(nilsII_sort$sample), ordered = T)
+        } else {
+            nilsII$sample <- factor(nilsII$sample, levels = unique(strains), ordered = T)
+        }
         nilsII$gt <- as.character(nilsII$gt)
     } else {
         nilsII <- nilgeno %>%
@@ -130,7 +134,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
             dplyr::filter(chrom == chr, chrom != "MtDNA")%>%
             dplyr::left_join(.,nilsII_sort_type, by = "sample")
 
-        nilsII$sample <- factor(nilsII$sample, levels = unique(nilsII_sort$sample), labels = unique(nilsII_sort$sample), ordered = T)
+        if(order == T) {
+            nilsII$sample <- factor(nilsII$sample, levels = unique(nilsII_sort$sample), labels = unique(nilsII_sort$sample), ordered = T)
+        } else {
+            nilsII$sample <- factor(nilsII$sample, levels = unique(strains), ordered = T)
+        }
         nilsII$gt <- as.character(nilsII$gt)
     }
     
@@ -164,7 +172,8 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
             # background plot
             bgplot <- ggplot(bg)+
                 geom_segment(aes(x = start/1e6, y = factor(sample, levels = levels(nilsII$sample)), xend = end/1e6, yend = sample, color = gt, size = 2))+
-                scale_color_manual(values=c("1"="orange","2"="blue"))+
+                # scale_color_manual(values=c("1"="orange","2"="blue"))+
+                scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
                 facet_grid(~chrom, scales = "free",  space = "free")+
                 theme_bw() +
                 theme(axis.text.x = element_blank(),
@@ -222,7 +231,8 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         nl.pl <- ggplot(nilsII)+
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            scale_color_manual(values=c("1"="orange","2"="blue"))+
+            # scale_color_manual(values=c("1"="orange","2"="blue"))+
+            scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
@@ -241,13 +251,17 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
     if(is.null(bgplot)) {
         return(list(nl.pl, nilsII_sort, nilsII))
     } else {
-        return(list(cowplot::plot_grid(nl.pl, bgplot, nrow = 1, ncol = 2, align = "h", axis = "b", rel_widths = c(1, 0.3)),
-                    nilsII_sort,
-                    nilsII))
-        # return(list(nl.pl,
-        #             nilsII_sort,
-        #             nilsII,
-        #             bgplot))
+        if(elements == T) {
+            return(list(nl.pl, bgplot, nilsII_sort))
+        } else {
+            return(list(cowplot::plot_grid(nl.pl, bgplot, nrow = 1, ncol = 2, align = "h", axis = "b", rel_widths = c(1, 0.3)),
+                        nilsII_sort,
+                        nilsII))
+            # return(list(nl.pl,
+            #             nilsII_sort,
+            #             nilsII,
+            #             bgplot))
+        }
     }
 }
 

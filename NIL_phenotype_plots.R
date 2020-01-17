@@ -62,7 +62,8 @@ quick_plot_breakup_flip <- function(df, cond, pltrt, ylab = paste0(cond, ".", pl
             fill=factor(type)) +
         geom_jitter(size = pointsize, width = 0.1)+
         geom_boxplot(outlier.colour = NA, alpha = 0.7)+
-        scale_fill_manual(values = c("N2_parent" = "orange", "CB_parent" = "blue", "NIL" = "gray"))+
+        # scale_fill_manual(values = c("N2_parent" = "orange", "CB_parent" = "blue", "NIL" = "gray"))+
+        scale_fill_manual(values = c("N2_parent" = "#F0BA51", "CB_parent" = "#484DA0", "NIL" = "gray"))+
         theme_bw()+
         coord_flip()+
         theme(axis.text.x = element_text(size=textsize, face="bold", color="black"),
