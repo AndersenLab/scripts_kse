@@ -1,6 +1,6 @@
 library(tidyverse)
 
-load("~/Dropbox/AndersenLab/Reagents/WormReagents/Variation/N2_GFF_WS245/gene_ref_flat.Rda")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_ref_flat.Rda")
 
 gene_model <- function(df, genename = NA, WBID = NA, gene_color = "purple", intron_color = "black",
                        utr3_color = "gray60", utr5_color = "gray60", gene_alpha = 0.5) {
