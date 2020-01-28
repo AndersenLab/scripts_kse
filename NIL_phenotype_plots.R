@@ -255,6 +255,9 @@ pxgplot_kt <- function (cross, map, parent = "N2xCB4856", tit = "", ylab = "",
         ggplot2::labs(x = "", y = ylab)
 }
 
+
+
+
 # plot phenotype x genotype splits for RIAILs, including N2/CB parents!
 # cross - cross object containing genotype and phenotype of RIAILs (output of `linkagemapping::mergepheno()`)
 # map - annotated mapping (result from `linkagemapping::annotate_lods()`)
@@ -381,3 +384,39 @@ maxlodplot_kt <- function (map, textsize = 12, titlesize = 16, linesize = 1, col
     return(plot)
 }
 
+maxlodplot_kt_noVE <- function (map, textsize = 12, titlesize = 16, linesize = 1, col = "blue") {
+    map1 <- map %>% dplyr::group_by(marker) %>% dplyr::filter(lod ==max(lod))
+    cis <- map %>% dplyr::group_by(marker) %>% dplyr::mutate(maxlod = max(lod)) %>%
+        dplyr::group_by(iteration) %>% dplyr::filter(!is.na(var_exp)) %>%
+        dplyr::do(head(., n = 1))
+    if (nrow(cis) == 0) {
+        plot <- ggplot2::ggplot(map1, ggplot2::aes(x = genotype,y = pheno)) + ggplot2::geom_blank()
+        return(plot)
+    }
+    map1 <- linkagemapping:::cidefiner(cis, map1)
+    plot <- ggplot2::ggplot(map1) + 
+        ggplot2::aes(x = pos/1e+06,y = lod)
+    if (nrow(cis) != 0) {
+        plot <- plot + ggplot2::geom_ribbon(ggplot2::aes(x = pos/1e+06,ymin = 0, ymax = ci_lod), fill = col, alpha = 0.5) +
+            ggplot2::geom_point(data = cis, ggplot2::aes(x = pos/1e+06,y = (1.05 * maxlod)), fill = "red", shape = 25,
+                                size = textsize/4, show.legend = FALSE)
+            # ggplot2::geom_text(data = cis, ggplot2::aes(x = pos/1e+06, y = (1.2 * maxlod), label = paste0(100 *round(var_exp, digits = 4), "%")), 
+                               # colour = "black",size = textsize / 4, hjust = "inward")
+    }
+    plot <- plot + ggplot2::geom_line(size = linesize, alpha = 0.85) +
+        ggplot2::facet_grid(. ~ chr, scales = "free", space = "free") +
+        ggplot2::labs(x = "Genomic Position (Mb)", y = "LOD") +
+        ggplot2::scale_colour_discrete(name = "Mapping\nIteration") +
+        ggplot2::ggtitle(map1$trait[1]) + 
+        ggplot2::theme_bw() +
+        ggplot2::theme(
+            axis.text.x = ggplot2::element_text(size = textsize, color = "black", face = "bold"),
+            axis.text.y = ggplot2::element_text(size = textsize, face = "bold", color = "black"),
+            axis.title.x = ggplot2::element_text(size = titlesize, face="bold", color="black"),
+            axis.title.y = ggplot2::element_text(size = titlesize, face="bold", color="black"),
+            strip.text.x = ggplot2::element_text(size = textsize, face = "bold", color = "black"),
+            strip.text.y = ggplot2::element_text(size = textsize, face = "bold", color = "black"),
+            plot.title = ggplot2::element_blank(),
+            panel.background = ggplot2::element_rect(color = "black", size = 1.2))
+    return(plot)
+}
