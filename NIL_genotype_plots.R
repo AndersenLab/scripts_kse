@@ -20,10 +20,36 @@ load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/rilgeno.Rda")
 # background - FALSE returns the genotype of just the chromosome or all chromosomes. TRUE returns just the chrom of interest and the "genome" genotype
 # ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL - plots only on chromosome of interest (chr)
 
-nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, right.bound = 19e6, scan.range = 2e4, 
+nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, right.bound = 19e6, scan.range = 2e4, 
                      all.chr=F, section = "all", background = F, ci = 1, elements = F, order = T){
+    
+    # copy nilgeno
+    nilgeno2 <- nilgeno
+    
+    # check to see if all strains are represented in the nilgeno2 file
+    df <- nilgeno2 %>%
+        dplyr::filter(sample %in% strains) %>%
+        dplyr::distinct(sample)
+    
+    if(nrow(df) != length(strains)) {
+        unknown_strains <- setdiff(strains, df$sample)
+       
+        # make fake genotype for unknown strains
+        for(s in unknown_strains) {
+            fake_geno <- nilgeno2 %>%
+                dplyr::filter(sample == "N2")%>%
+                dplyr::distinct(chrom, .keep_all = T) %>%
+                dplyr::mutate(sample = s,
+                              gt = 3,
+                              gt_name = "unknown")
+            
+            # add fake geno to nil geno
+            nilgeno2 <- rbind(nilgeno2, fake_geno)
+        }
+    }
+    
     # # # determine if NILs are CB or N2
-    nilsII_sort_type <- nilgeno %>%
+    nilsII_sort_type <- nilgeno2 %>%
         dplyr::filter(sample %in% strains) %>%
         dplyr::group_by(sample)%>%
         dplyr::mutate(size = end - start )%>%
@@ -39,7 +65,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         dplyr::select(sample, nil_type)
 
     # # # keep NILs that lost NIL genotype on right side
-    nilsII_left <- nilgeno %>%
+    nilsII_left <- nilgeno2 %>%
         dplyr::filter(sample %in% strains) %>%
         dplyr::filter(chrom == chr)%>%
         dplyr::left_join(.,nilsII_sort_type, by = "sample")%>%
@@ -55,7 +81,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         dplyr::select(sample, side)
 
     # # # keep NILs that lost NIL genotype on left side
-    nilsII_right <- nilgeno %>%
+    nilsII_right <- nilgeno2 %>%
         dplyr::filter(sample %in% strains) %>%
         dplyr::filter(chrom == chr)%>%
         dplyr::left_join(.,nilsII_sort_type, by = "sample")%>%
@@ -67,7 +93,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
     nil_sides <- bind_rows(nilsII_left,nilsII_right)
 
 
-    nilsII_sort_left <- nilgeno %>%
+    nilsII_sort_left <- nilgeno2 %>%
         dplyr::filter(sample %in% strains) %>%
         dplyr::filter(chrom == chr)%>%
         dplyr::left_join(.,nilsII_sort_type, by = "sample")%>%
@@ -87,7 +113,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         dplyr::arrange(nil_type, desc(gt_ct))
 
     #Here
-    nilsII_sort_right <- nilgeno %>%
+    nilsII_sort_right <- nilgeno2 %>%
         dplyr::filter(sample %in% strains) %>%
         dplyr::filter(chrom == chr)%>%
         dplyr::left_join(.,nilsII_sort_type, by = "sample")%>%
@@ -106,7 +132,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         dplyr::ungroup()%>%
         dplyr::arrange( nil_type, gt_ct)
 
-    N2CB <- nilgeno %>%
+    N2CB <- nilgeno2 %>%
         dplyr::filter(sample %in% c("N2", "CB4856"), chrom == chr) %>%
         dplyr::mutate(nil_type = "parent", side = NA, size = NA, gt_ct = NA)
 
@@ -114,10 +140,19 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         arrange(desc(nil_type), desc(side), size)
 
     nilsII_sort <- rbind(nilsII_sort, N2CB)
-
+    
+    if(nrow(df) != length(strains)) {
+        nilsII_sort <- rbind(nilsII_sort, nilgeno2 %>%
+                             dplyr::filter(sample %in% unknown_strains,
+                                           chrom == chr) %>%
+                                 dplyr::mutate(nil_type = "unkown", side = NA, size = NA, gt_ct = NA))
+        nilsII <- nilsII %>%
+            dplyr::mutate(nil_type = ifelse(gt_name == "unknown", "unknown", nil_type))
+    }
+    
     if (all.chr == T){
 
-        nilsII <- nilgeno %>%
+        nilsII <- nilgeno2 %>%
             dplyr::filter(sample %in% strains) %>%
             dplyr::filter(chrom != "MtDNA")%>%
             dplyr::left_join(.,nilsII_sort_type, by = "sample")
@@ -129,7 +164,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         }
         nilsII$gt <- as.character(nilsII$gt)
     } else {
-        nilsII <- nilgeno %>%
+        nilsII <- nilgeno2 %>%
             dplyr::filter(sample %in% strains) %>%
             dplyr::filter(chrom == chr, chrom != "MtDNA")%>%
             dplyr::left_join(.,nilsII_sort_type, by = "sample")
@@ -158,8 +193,14 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                     dplyr::pull(nil_type)
                 
                 # add a new row with the background genotype in a "new" chromosome
-                bg <- rbind(bg, c("Genome", 1, 3e6, i, ifelse(type == "N2", 2, ifelse(type == "CB", 1, NA)), 
-                                  ifelse(type == "N2", "CB4856", "N2"), NA, NA, NA, NA, type))
+                bg <- rbind(bg, c("Genome", 1, 3e6, i, 
+                                  ifelse(type == "N2", 2,
+                                         ifelse(type == "CB", 1,
+                                                ifelse(type == "unknown", 3, NA))),
+                                  ifelse(type == "N2", "CB4856",
+                                         ifelse(type == "CB", "N2",
+                                                ifelse(type == "unknown", "unknown", NA))),
+                                  NA, NA, NA, NA, type))
             }
             bg <- bg %>%
                 tidyr::drop_na(sample) %>%
@@ -171,9 +212,9 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
             
             # background plot
             bgplot <- ggplot(bg)+
-                geom_segment(aes(x = start/1e6, y = factor(sample, levels = levels(nilsII$sample)), xend = end/1e6, yend = sample, color = gt, size = 2))+
-                # scale_color_manual(values=c("1"="orange","2"="blue"))+
-                scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
+                geom_segment(aes(x = start/1e6, y = factor(sample, levels = levels(nilsII$sample)), xend = end/1e6, yend = sample, color = gt_name, size = 2))+
+                scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
+                # scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
                 facet_grid(~chrom, scales = "free",  space = "free")+
                 theme_bw() +
                 theme(axis.text.x = element_blank(),
@@ -192,9 +233,9 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
     # only plot the N2-NILs
     if(section == "N2-NILs") {
         nl.pl <- ggplot(nilsII %>% dplyr::filter(nil_type == "CB"))+
-            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt, size = 2))+
+            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            scale_color_manual(values=c("1"="orange","2"="blue"))+
+            scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
@@ -206,13 +247,13 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
             geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
-            labs(x = "Genomic Position (Mb)", y = "")
+            labs(x = "Genomic position (Mb)", y = "")
     } else if(section == "CB-NILs") {
         # only plot the CB-NILs
         nl.pl <- ggplot(nilsII %>% dplyr::filter(nil_type == "CB"))+
-            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt, size = 2))+
+            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            scale_color_manual(values=c("1"="orange","2"="blue"))+
+            scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
@@ -224,15 +265,14 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
             geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
-            labs(x = "Genomic Position (Mb)", y = "")
+            labs(x = "Genomic position (Mb)", y = "")
     } else {
         
         # plot all NILs
         nl.pl <- ggplot(nilsII)+
-            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt, size = 2))+
+            geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            # scale_color_manual(values=c("1"="orange","2"="blue"))+
-            scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
+            scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
@@ -244,7 +284,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
             geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
-            labs(x = "Genomic Position (Mb)", y = "")
+            labs(x = "Genomic position (Mb)", y = "")
     }
     
     # return plots and dataframe
@@ -264,6 +304,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 1, rig
         }
     }
 }
+
 
 # plots genotype on left and phenotype on right for dataframe, condition, trait
 # dataframe needs condition and trait columns
