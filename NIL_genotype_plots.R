@@ -146,8 +146,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
                              dplyr::filter(sample %in% unknown_strains,
                                            chrom == chr) %>%
                                  dplyr::mutate(nil_type = "unkown", side = NA, size = NA, gt_ct = NA))
-        nilsII <- nilsII %>%
-            dplyr::mutate(nil_type = ifelse(gt_name == "unknown", "unknown", nil_type))
+
     }
     
     if (all.chr == T){
@@ -156,6 +155,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
             dplyr::filter(sample %in% strains) %>%
             dplyr::filter(chrom != "MtDNA")%>%
             dplyr::left_join(.,nilsII_sort_type, by = "sample")
+        
+        if(nrow(df) != length(strains)) {
+            nilsII <- nilsII %>%
+                dplyr::mutate(nil_type = ifelse(gt_name == "unknown", "unknown", nil_type))
+        }
 
         if(order == T) {
             nilsII$sample <- factor(nilsII$sample, levels = unique(nilsII_sort$sample), labels = unique(nilsII_sort$sample), ordered = T)
@@ -168,6 +172,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
             dplyr::filter(sample %in% strains) %>%
             dplyr::filter(chrom == chr, chrom != "MtDNA")%>%
             dplyr::left_join(.,nilsII_sort_type, by = "sample")
+        
+        if(nrow(df) != length(strains)) {
+            nilsII <- nilsII %>%
+                dplyr::mutate(nil_type = ifelse(gt_name == "unknown", "unknown", nil_type))
+        }
 
         if(order == T) {
             nilsII$sample <- factor(nilsII$sample, levels = unique(nilsII_sort$sample), labels = unique(nilsII_sort$sample), ordered = T)
