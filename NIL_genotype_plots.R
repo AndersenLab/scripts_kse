@@ -21,7 +21,7 @@ load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/rilgeno.Rda")
 # ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL - plots only on chromosome of interest (chr)
 
 nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, right.bound = 19e6, scan.range = 2e4, 
-                     all.chr=F, section = "all", background = F, ci = 1, elements = F, order = T){
+                     all.chr=F, section = "all", background = F, ci = 1, elements = F, order = T, n2_color = "orange", cb_color = "blue"){
     
     # copy nilgeno
     nilgeno2 <- nilgeno
@@ -222,7 +222,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
             # background plot
             bgplot <- ggplot(bg)+
                 geom_segment(aes(x = start/1e6, y = factor(sample, levels = levels(nilsII$sample)), xend = end/1e6, yend = sample, color = gt_name, size = 2))+
-                scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
+                scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
                 # scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
                 facet_grid(~chrom, scales = "free",  space = "free")+
                 theme_bw() +
@@ -244,7 +244,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
         nl.pl <- ggplot(nilsII %>% dplyr::filter(nil_type == "CB"))+
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
+            scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
@@ -262,7 +262,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
         nl.pl <- ggplot(nilsII %>% dplyr::filter(nil_type == "CB"))+
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
+            scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
@@ -281,7 +281,7 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
         nl.pl <- ggplot(nilsII)+
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
-            scale_color_manual(values=c("N2"="orange","CB4856"="blue", "unknown" = "grey"))+
+            scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
             theme_bw() +
             theme(axis.text.x = element_text(size=12, face="bold", color="black"),
                   axis.text.y = element_text(size=12, face="bold", color="black"),
