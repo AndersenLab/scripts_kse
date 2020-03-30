@@ -82,6 +82,7 @@ quick_plot_breakup_flip <- function(df, cond, pltrt, ylab = paste0(cond, ".", pl
 
 # plot all QTL from linkagemapping for several traits/conditions
 # annotatedmap - annotated mapping (result from `linkagemapping::annotate_lods()`)
+# split into condition/trait first
 # nils - buggy, might not work. Supply a dataframe of nil genotype information as ci_l_pos and ci_r_pos define the region of the NIL. Will be plotted as a red rectangle on the plot.
 all_lod_plots <- function(annotatedmap, nils = NULL) {
     newmap <- annotatedmap %>%
@@ -89,24 +90,18 @@ all_lod_plots <- function(annotatedmap, nils = NULL) {
         na.omit()
     
     newmap <- newmap %>%
-        dplyr::mutate(condition = stringr::str_split_fixed(.$trait, "\\.", 2)[,1],
-                      trait = stringr::str_split_fixed(.$trait, "\\.", 2)[,2],
-                      n2res = ifelse(eff_size < 0, "yes", "no"))
+        dplyr::mutate(n2res = ifelse(eff_size < 0, "yes", "no"),
+                      ci_l_pos = as.numeric(ci_l_pos),
+                      ci_r_pos = as.numeric(ci_r_pos),
+                      pos = as.numeric(pos),
+                      lod = as.numeric(lod))
     
-    faketrait <- newmap$trait[1]
-    fakecond <- newmap$condition[1]
-    #Set chromosome boundaries
-    newrows <- newmap[1,] 
-    newrows[1,] = c(NA,"I",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,14972282, fakecond, "yes")
-    newrows[2,] = c(NA,"II",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,15173999, fakecond, "yes")
-    newrows[3,] = c(NA,"III",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,13829314, fakecond, "yes")
-    newrows[4,] = c(NA,"IV",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17450860, fakecond, "yes")
-    newrows[5,] = c(NA,"V",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,20914693, fakecond, "yes")
-    newrows[6,] = c(NA,"X",5000000,faketrait,0,NA,NA,NA,NA,NA,1,NA,17748731, fakecond, "yes")
-    newrows$ci_l_pos <- as.numeric(newrows$ci_l_pos)
-    newrows$ci_r_pos <- as.numeric(newrows$ci_r_pos)
-    newrows$pos <- as.numeric(newrows$pos)
-    newrows$lod <- as.numeric(newrows$lod)
+    # get chromosome lengths
+    chr_lens <- data.frame(chr = c("I", "II", "III", "IV", "V", "X"), 
+                           start = rep(1,6), 
+                           end = c(14972282,15173999,13829314,17450860,20914693,17748731),
+                           condition = newmap$condition[1],
+                           trait = newmap$trait[1])
     
     if(is.null(nils)) {
         #Plot
@@ -116,7 +111,7 @@ all_lod_plots <- function(annotatedmap, nils = NULL) {
             viridis::scale_fill_viridis(name = "LOD") + 
             viridis::scale_color_viridis(name = "LOD") +
             geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
-            geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
+            geom_segment(data=chr_lens, aes(x =  start/1e6, xend = end/1e6, y = trait, yend=trait), color='transparent', size =0.1) +
             geom_point(aes(fill = lod, shape = n2res), color = "black",size = 3, alpha = 1)+
             scale_shape_manual(values = c("yes" = 24, "no" = 25)) +
             xlab("Genomic position (Mb)") + ylab("") +
@@ -143,7 +138,7 @@ all_lod_plots <- function(annotatedmap, nils = NULL) {
             theme_bw() +
             viridis::scale_fill_viridis(name = "LOD") + viridis::scale_color_viridis(name = "LOD") +
             geom_segment(aes(x = ci_l_pos/1e6, y = trait, xend = ci_r_pos/1e6, yend = trait, color = lod), size = 2, alpha = 1) +
-            geom_segment(data=newrows,aes(x = 0, y = trait, xend = ci_r_pos/1e6, yend = trait), size = 2.5, alpha = 0) +
+            geom_segment(data=chr_lens, aes(x =  start/1e6, xend = end/1e6, y = trait, yend=trait), color='transparent', size =0.1) +
             geom_rect(data=nils, aes(xmin = ci_l_pos/1e6, ymin = "cv.EXT", xmax = ci_r_pos/1e6, ymax = "var.TOF"), size = 2, alpha = 0.2, fill = "red")+
             geom_point(aes(fill = lod, shape = n2res), color = "black",size = 3, alpha = 1)+
             scale_shape_manual(values = c("yes" = 24, "no" = 25)) +
