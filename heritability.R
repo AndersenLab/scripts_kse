@@ -43,8 +43,8 @@ H2.calc <- function(df, boot = T){
     }
 }
 
-# calculate heritability without confidence intervals
-H2.calc(df, boot = F)
-# calculate heritability with confidence intervals
-H2.calc(df, boot = T)
+# # calculate heritability without confidence intervals
+# H2.calc(df, boot = F)
+# # calculate heritability with confidence intervals
+# H2.calc(df, boot = T)
 
