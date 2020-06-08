@@ -101,3 +101,31 @@ summarize_model <- function(model) {
     return(df)
 }
 
+######## Example usage - sqst5
+# load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/zinc/manuscript/data/processed/FileS2_riailpheno.Rda")
+# 
+# # ver-2 probe: A_12_P104472
+# 
+# # zinc set1 pheno
+# set1 <- riailpheno %>%
+#     dplyr::filter(set == 1,
+#                   trait == "median.EXT")
+# 
+# # perform mediation
+# # mediation analysis
+# 
+# # get phenodf and scale phenotypes
+# p <- set1 %>%
+#     dplyr::mutate(newpheno = (phenotype - mean(phenotype, na.rm = T)) / sd(phenotype, na.rm = T)) %>%
+#     dplyr::select(strain, phenotype = newpheno)
+# 
+# # run eQTL mediation model with scaled phenotypes using mediation package
+# model <- eQTL_mediate_dQTL(peak = "III_118992", probe = "A_12_P104472", phenodf = p, scaled = T, lm = F)
+# 
+# # summarize the model
+# df <- summarize_model(model) %>%
+#     dplyr::mutate(var = dplyr::case_when(var == "ADE" ~ "direct",
+#                                          var == "MED" ~ "prop_med", 
+#                                          var == "ACME" ~ "med",
+#                                          var == "total" ~ "total",
+#                                          TRUE ~ "NA"))
