@@ -19,9 +19,14 @@ load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/rilgeno.Rda")
 # section - "all" returns all NILs, "N2-NILs" returns only NILs N2 > CB. "CB-NILs" returns only NILs CB > N2
 # background - FALSE returns the genotype of just the chromosome or all chromosomes. TRUE returns just the chrom of interest and the "genome" genotype
 # ci - default is NA (no lines drawn) otherwise input vector of positions for confidence intervals of QTL - plots only on chromosome of interest (chr)
+# order - should the function guess the best order for your NILs or should you define this? Default is TRUE (function decides). If FALSE, the order of your NILs
+#         is determined by the order you write them in "strains"
+# elements - should the function return each individual plot and dataset (T) or should it just plot it all (F)? For ease, choose F,
+#         if you want to manipulate the plots later, maybe choose T
+# n2_color and cb_color - can change to a different "orange" and "blue" if preferred. Pretty option: 
 
 nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, right.bound = 19e6, scan.range = 2e4, 
-                     all.chr=F, section = "all", background = F, ci = 1, elements = F, order = T, n2_color = "orange", cb_color = "blue"){
+                     all.chr=F, section = "all", background = F, ci = NA, elements = F, order = T, n2_color = "orange", cb_color = "blue"){
     
     # copy nilgeno
     nilgeno2 <- nilgeno
@@ -216,12 +221,12 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
                 dplyr::mutate(start = as.numeric(start), end = as.numeric(end))
             
             # add "chrom" to chromosome for plotting
-            nilsII <- nilsII %>%
+            nils2 <- nilsII %>%
                 dplyr::mutate(chrom = paste0("chr", chrom))
             
             # background plot
             bgplot <- ggplot(bg)+
-                geom_segment(aes(x = start/1e6, y = factor(sample, levels = levels(nilsII$sample)), xend = end/1e6, yend = sample, color = gt_name, size = 2))+
+                geom_segment(aes(x = start/1e6, y = factor(sample, levels = levels(nils2$sample)), xend = end/1e6, yend = sample, color = gt_name, size = 2))+
                 scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
                 # scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
                 facet_grid(~chrom, scales = "free",  space = "free")+
@@ -255,7 +260,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
-            geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
+            geom_vline(data = filter(nilsII, chrom == chr) %>%
+                           dplyr::distinct(sample, chrom) %>%
+                           dplyr::mutate(xint = paste(ci, collapse = ",")) %>%
+                           tidyr::separate_rows(xint), 
+                       aes(xintercept = as.numeric(xint)), color = "red") +
             labs(x = "Genomic position (Mb)", y = "")
     } else if(section == "CB-NILs") {
         # only plot the CB-NILs
@@ -273,7 +282,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
-            geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
+            geom_vline(data = filter(nilsII, chrom == chr) %>%
+                           dplyr::distinct(sample, chrom) %>%
+                           dplyr::mutate(xint = paste(ci, collapse = ",")) %>%
+                           tidyr::separate_rows(xint), 
+                       aes(xintercept = as.numeric(xint)), color = "red") +
             labs(x = "Genomic position (Mb)", y = "")
     } else {
         
@@ -292,7 +305,11 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
-            geom_vline(data = filter(nilsII, chrom == chr), aes(xintercept = ci), color = ifelse(ci != 1, "red", NA)) +
+            geom_vline(data = filter(nilsII, chrom == chr) %>%
+                           dplyr::distinct(sample, chrom) %>%
+                           dplyr::mutate(xint = paste(ci, collapse = ",")) %>%
+                           tidyr::separate_rows(xint), 
+                       aes(xintercept = as.numeric(xint)), color = "red") +
             labs(x = "Genomic position (Mb)", y = "")
     }
     
