@@ -336,12 +336,12 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
 
 # plots genotype on left and phenotype on right for dataframe, condition, trait
 # dataframe needs condition and trait columns
-plot_genopheno <- function(pheno, cond, trt, chrom, back = F, conf = 1) {
+plot_genopheno <- function(pheno, cond, trt, chrom, back = F, conf = NA, theme_size = 12) {
     # source phenotype plot code
     source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_phenotype_plots.R")
     
     # plot genotype
-    nilgeno_plot <- nil_plot(unique(pheno$strain), chr = chrom, background = back, ci = conf, left.bound = 0)
+    nilgeno_plot <- nil_plot(unique(pheno$strain), chr = chrom, background = back, ci = conf, left.bound = 0, tsize = theme_size)
     
     # order phenotype in same level as genotype plot
     pheno$strain <- factor(pheno$strain, levels = unique(nilgeno_plot[[2]]$sample), 
