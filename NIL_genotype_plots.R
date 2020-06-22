@@ -24,9 +24,11 @@ load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/rilgeno.Rda")
 # elements - should the function return each individual plot and dataset (T) or should it just plot it all (F)? For ease, choose F,
 #         if you want to manipulate the plots later, maybe choose T
 # n2_color and cb_color - can change to a different "orange" and "blue" if preferred. Pretty option: 
+# tsize - theme size. Default is 12
 
 nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, right.bound = 19e6, scan.range = 2e4, 
-                     all.chr=F, section = "all", background = F, ci = NA, elements = F, order = T, n2_color = "orange", cb_color = "blue"){
+                     all.chr=F, section = "all", background = F, ci = NA, elements = F, order = T, n2_color = "orange", cb_color = "blue",
+                     tsize = 12){
     
     # copy nilgeno
     nilgeno2 <- nilgeno
@@ -230,13 +232,13 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
                 scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
                 # scale_color_manual(values=c("1"="#F0BA51","2"="#484DA0"))+
                 facet_grid(~chrom, scales = "free",  space = "free")+
-                theme_bw() +
+                theme_bw(tsize) +
                 theme(axis.text.x = element_blank(),
                       axis.text.y = element_blank(),
                       axis.title.x = element_blank(),
                       axis.title.y = element_blank(),
-                      strip.text = element_text(size = 12, face = "bold", color = "black"),
-                      plot.title = element_text(size=24, face="bold"),
+                      strip.text = element_text(face = "bold", color = "black"),
+                      plot.title = element_text(face="bold"),
                       legend.position = "none",
                       panel.grid.minor = element_blank(),
                       panel.grid.major = element_blank(),
@@ -250,13 +252,13 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
             scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
-            theme_bw() +
-            theme(axis.text.x = element_text(size=12, face="bold", color="black"),
-                  axis.text.y = element_text(size=12, face="bold", color="black"),
-                  axis.title.x = element_text(size=14, face="bold", color="black"),
-                  axis.title.y = element_text(size=14, face="bold", color="black"),
-                  strip.text = element_text(size = 12, face = "bold", color = "black"),
-                  plot.title = element_text(size=24, face="bold"),
+            theme_bw(tsize) +
+            theme(axis.text.x = element_text(face="bold", color="black"),
+                  axis.text.y = element_text(face="bold", color="black"),
+                  axis.title.x = element_text(face="bold", color="black"),
+                  axis.title.y = element_text(face="bold", color="black"),
+                  strip.text = element_text(face = "bold", color = "black"),
+                  plot.title = element_text(face="bold"),
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
@@ -272,13 +274,13 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
             scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
-            theme_bw() +
-            theme(axis.text.x = element_text(size=12, face="bold", color="black"),
-                  axis.text.y = element_text(size=12, face="bold", color="black"),
-                  axis.title.x = element_text(size=14, face="bold", color="black"),
-                  axis.title.y = element_text(size=14, face="bold", color="black"),
-                  strip.text = element_text(size = 12, face = "bold", color = "black"),
-                  plot.title = element_text(size=24, face="bold"),
+            theme_bw(tsize) +
+            theme(axis.text.x = element_text(face="bold", color="black"),
+                  axis.text.y = element_text(face="bold", color="black"),
+                  axis.title.x = element_text(face="bold", color="black"),
+                  axis.title.y = element_text(face="bold", color="black"),
+                  strip.text = element_text(face = "bold", color = "black"),
+                  plot.title = element_text(face="bold"),
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
@@ -295,13 +297,13 @@ nil_plot <- function(strains, chr, left.cb = 0, left.n2 = 0, left.bound = 0, rig
             geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt_name, size = 2))+
             facet_grid(~chrom, scales = "free",  space = "free")+
             scale_color_manual(values=c("N2"=n2_color,"CB4856"=cb_color, "unknown" = "grey"))+
-            theme_bw() +
-            theme(axis.text.x = element_text(size=12, face="bold", color="black"),
-                  axis.text.y = element_text(size=12, face="bold", color="black"),
-                  axis.title.x = element_text(size=14, face="bold", color="black"),
-                  axis.title.y = element_text(size=14, face="bold", color="black"),
-                  strip.text = element_text(size = 12, face = "bold", color = "black"),
-                  plot.title = element_text(size=24, face="bold"),
+            theme_bw(tsize) +
+            theme(axis.text.x = element_text(face="bold", color="black"),
+                  axis.text.y = element_text(face="bold", color="black"),
+                  axis.title.x = element_text(face="bold", color="black"),
+                  axis.title.y = element_text(face="bold", color="black"),
+                  strip.text = element_text(face = "bold", color = "black"),
+                  plot.title = element_text(face="bold"),
                   legend.position = "none",
                   panel.grid.minor = element_blank(),
                   panel.grid.major = element_blank())+
