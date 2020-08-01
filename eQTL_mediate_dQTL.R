@@ -102,7 +102,7 @@ summarize_model <- function(model) {
 }
 
 ######## Example usage - sqst5
-# load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/zinc/manuscript/data/processed/FileS2_riailpheno.Rda")
+# load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/zinc/manuscript/data/processed/FileS3_riailpheno.Rda")
 # 
 # # ver-2 probe: A_12_P104472
 # 

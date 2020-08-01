@@ -8,6 +8,9 @@ source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_genotype_plots.R"
 
 # load gene descriptions
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_descriptions_WS273.Rda")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_annotations.Rda")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/eQTL_mediation/manuscript/data/FileS9_eqtlmap.Rda")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/eqtl_probes.Rda")
 
 # load primersprimers
 primers <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1LJFZZ4dZm9KnoTpZqwCkQiXAKuD4Q4IGebNu1OKSnXM/edit#gid=0') %>%
@@ -36,6 +39,101 @@ qtl_narrow <- function(query, sev = c("MODIFIER", "LOW", "MODERATE", "HIGH")) {
     
     return(df)
 }
+
+# Look for genes in interval
+query_genes <- function(region, GO = NULL, strain = "CB4856") {
+    
+    # filter eqtl to > 5% VE
+    eqtlmap2 <- eqtlmap %>%
+        dplyr::filter(var_exp >= 0.05)
+    
+    # how many genes are in the interval?
+    all_genes <- cegwas2::query_vcf(region, impact = c("LOW", "MODERATE", "HIGH", "MODIFIER"), samples = strain)
+    print(glue::glue("There are {length(unique(all_genes$gene_id))} genes in the interval {region}"))
+    
+    # how many eQTL map to this region?
+    chrom <- stringr::str_split_fixed(region, ":", 2)[,1]
+    left_pos <- as.numeric(stringr::str_split_fixed(stringr::str_split_fixed(region, ":", 2)[,2], "-", 2)[,1])
+    right_pos <- as.numeric(stringr::str_split_fixed(stringr::str_split_fixed(region, ":", 2)[,2], "-", 2)[,2])
+    
+    all_eQTL <- eqtlmap2 %>%
+        dplyr::filter(chr == chrom,
+                      ci_l_pos < right_pos,
+                      ci_r_pos > left_pos)
+    print(glue::glue("There are {nrow(all_eQTL)} eQTL ({length(unique(all_eQTL$trait))} traits) that map to {region}"))
+    
+    # all eQTL probes
+    all_eQTL_probes <- eqtl_probes %>%
+        dplyr::filter(probe %in% all_eQTL$trait) %>%
+        dplyr::left_join(gene_annotations, by = "gene_id")
+    
+    # which of the eQTL are overlapping with genes in interval?
+    eQTL_outside_CI <- all_eQTL_probes %>%
+        dplyr::filter(!wbgene %in% all_genes$gene_id)
+    print(glue::glue("There are {nrow(all_eQTL)-length(unique(eQTL_outside_CI$wbgene))} genes in the region with an eQTL and {length(unique(eQTL_outside_CI$wbgene))} genes outside the region with an eQTL"))
+    
+    # Total genes of interest:
+    print(glue::glue("There are {length(unique(all_genes$gene_id)) + length(unique(eQTL_outside_CI$wbgene))} total genes of interest."))
+    
+    # how many of the genes in interval have variation?
+    vars <- all_genes %>%
+        dplyr::mutate(GT = ifelse(a1 == REF, "ref", "alt")) %>%
+        dplyr::filter(GT == "alt")
+    
+    # genes with protein coding vars
+    proteincode <- vars %>%
+        dplyr::filter(impact %in% c("MODERATE", "HIGH"))
+    print(glue::glue("There are {length(unique(vars$gene_id))}/{length(unique(all_genes$gene_id))} genes in interval with genetic variation, {length(unique(proteincode$gene_id))}/{length(unique(vars$gene_id))} have protein-coding variation"))
+    
+    # should I look at GO annotations?
+    if(!is.null(GO)) {
+        # total genes with GO annotations
+        go_genes <- gene_annotations %>%
+            dplyr::filter(wbgene %in% c(all_genes$gene_id, eQTL_outside_CI$wbgene)) %>%
+            dplyr::filter_all(any_vars(stringr::str_detect(., pattern = GO)))
+        print(glue::glue("There are {length(unique(go_genes$wbgene))}/{length(unique(all_genes$gene_id)) + length(unique(eQTL_outside_CI$wbgene))} genes with {GO} annotation"))
+        
+        # genes with GO annotations and variation
+        go_var <- gene_annotations %>%
+            dplyr::filter(wbgene %in% vars$gene_id) %>%
+            dplyr::filter_all(any_vars(stringr::str_detect(., pattern = GO)))
+        print(glue::glue("There are {length(unique(go_var$wbgene))}/{length(unique(go_genes$wbgene))} genes with {GO} annotation AND genetic variation"))
+        
+        # genes with GO annotation and protein-coding variation
+        go_pcvar <- gene_annotations %>%
+            dplyr::filter(wbgene %in% proteincode$gene_id) %>%
+            dplyr::filter_all(any_vars(stringr::str_detect(., pattern = GO)))
+        print(glue::glue("There are {length(unique(go_pcvar$wbgene))}/{length(unique(go_genes$wbgene))} genes with {GO} annotation AND protein-coding genetic variation"))
+        
+        # genes with GO annotation and eQTL
+        go_eqtl <- gene_annotations %>%
+            dplyr::filter(wbgene %in% all_eQTL_probes$wbgene) %>%
+            dplyr::filter_all(any_vars(stringr::str_detect(., pattern = GO)))
+        print(glue::glue("There are {length(unique(go_eqtl$wbgene))}/{length(unique(go_genes$wbgene))} genes with {GO} annotation AND eQTL"))
+        
+        # return final dataframe with all info (might be off, only has 133 instead of 134?)
+        total_genes <- gene_annotations %>%
+            dplyr::filter(wbgene %in% c(all_genes$gene_id, eQTL_outside_CI$wbgene)) %>%
+            dplyr::mutate(inside_CI = ifelse(wbgene %in% all_genes$gene_id, T, F),
+                          eqtl = ifelse(wbgene %in% all_eQTL_probes$wbgene, T, F),
+                          vars = ifelse(wbgene %in% vars$gene_id, T, F),
+                          pc_vars = ifelse(wbgene %in% proteincode$gene_id, T, F),
+                          go_annotation = ifelse(wbgene %in% go_genes$wbgene, T, F))
+    } else {
+        
+        # return final dataframe with all info (might be off, only has 133 instead of 134?)
+        total_genes <- gene_annotations %>%
+            dplyr::filter(wbgene %in% c(all_genes$gene_id, eQTL_outside_CI$wbgene)) %>%
+            dplyr::mutate(inside_CI = ifelse(wbgene %in% all_genes$gene_id, T, F),
+                          eqtl = ifelse(wbgene %in% all_eQTL_probes$wbgene, T, F),
+                          vars = ifelse(wbgene %in% vars$gene_id, T, F),
+                          pc_vars = ifelse(wbgene %in% proteincode$gene_id, T, F),
+                          go_annotation = NA)
+    }
+    
+    return(total_genes)
+}    
+
 
 # Script to find NILs in your area of interest
 
