@@ -48,7 +48,7 @@ query_genes <- function(region, GO = NULL, strain = "CB4856") {
         dplyr::filter(var_exp >= 0.05)
     
     # how many genes are in the interval?
-    all_genes <- cegwas2::query_vcf(region, impact = c("LOW", "MODERATE", "HIGH", "MODIFIER"), samples = strain)
+    all_genes <- cegwas2::query_vcf(region, impact = "ALL", samples = strain)
     print(glue::glue("There are {length(unique(all_genes$gene_id))} genes in the interval {region}"))
     
     # how many eQTL map to this region?
@@ -66,6 +66,42 @@ query_genes <- function(region, GO = NULL, strain = "CB4856") {
     all_eQTL_probes <- eqtl_probes %>%
         dplyr::filter(probe %in% all_eQTL$trait) %>%
         dplyr::left_join(gene_annotations, by = "gene_id")
+    
+    ##############################
+    # if wbgene is NA - try to fix
+    ##############################
+    
+    # filter na
+    na1 <- all_eQTL_probes %>%
+        dplyr::filter(is.na(wbgene)) %>%
+        dplyr::select(probe, gene_id, gene_name = gene_name.x)
+    
+    # filter not na
+    nona1 <- all_eQTL_probes %>%
+        tidyr::drop_na(wbgene) %>%
+        dplyr::rename(gene_name = gene_name.x) %>%
+        dplyr::select(-gene_name.y)
+    
+    # join na with gene annotations by gene_name
+    na2 <- na1 %>%
+        dplyr::left_join(gene_annotations, by = 'gene_name') %>%
+        dplyr::rename(gene_id = gene_id.x) %>%
+        dplyr::select(-gene_id.y)
+    
+    # add to final df
+    test <- na2 %>%
+        dplyr::bind_rows(nona1)
+    
+    # are there still NA to hand curate?
+    na3 <- test %>%
+        dplyr::filter(is.na(wbgene))
+    
+    all_eQTL_probes <- test
+    
+    unique_probes <- paste(unique(na3$probe), collapse = ",")
+    print(glue::glue("There are {nrow(na3)} genes with an eQTL that need to be hand curated: {unique_probes}"))
+    
+    ##################################
     
     # which of the eQTL are overlapping with genes in interval?
     eQTL_outside_CI <- all_eQTL_probes %>%
