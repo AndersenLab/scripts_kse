@@ -42,7 +42,11 @@ get_stats_TF <- function(dfregressed, pval = 0.05) {
     
     #Add statistical significance to each pair of strains
     for(i in 1:nrow(statsdf)) {
-        stats <- broom::tidy(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i], plot = FALSE))
+        # broom::tidy doing something weird... need to code by hand now
+        stats <- data.frame(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i], plot = FALSE)[[1]]) %>%
+            dplyr::mutate(comparison = rownames(.)) %>%
+            dplyr::rename(adj.p.val = p.adj)
+        # stats <- broom::tidy(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i], plot = FALSE))
         for(j in 1:nrow(stats)){
             if(stats$adj.p.value[j] < pval) {
                 comp <- stats$comparison[j]
@@ -65,10 +69,15 @@ get_stats <- function(dfregressed) {
     #Add statistical significance to each pair of strains
     newdf <- NULL
     for(i in 1:nrow(statsdf)) {
-        stats <- broom::tidy(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i])) %>%
-            dplyr::select(-term) %>%
+        # broom::tidy doing something weird... need to code by hand now
+        stats <- data.frame(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i], plot = FALSE)[[1]]) %>%
+            dplyr::mutate(comparison = rownames(.)) %>%
+            dplyr::rename(adj.p.value = p.adj) %>%
+        # stats <- broom::tidy(quick_stats(df = dfregressed, trt = statsdf$trait[i], cond = statsdf$condition[i], plot = FALSE))
+            # dplyr::select(-term) %>%
             dplyr::mutate(condition = statsdf$condition[i],
-                          trait = statsdf$trait[i])
+                          trait = statsdf$trait[i]) %>%
+            dplyr::select(comparison, condition, trait, diff:adj.p.value)
         
         newdf <- rbind(newdf, stats)
         
