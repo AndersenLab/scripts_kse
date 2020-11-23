@@ -7,14 +7,14 @@ library(gsheet)
 source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_genotype_plots.R")
 
 # load gene descriptions
-# load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_descriptions_WS273.Rda")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_descriptions_WS273.Rda")
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_annotations.Rda")
 load("~/Dropbox/AndersenLab/LabFolders/Katie/projects/eQTL_mediation/manuscript/data/FileS9_eqtlmap.Rda")
 # load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/eqtl_probes.Rda")
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/all_probe_info.Rda")
 
 # load primersprimers
-primers <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1LJFZZ4dZm9KnoTpZqwCkQiXAKuD4Q4IGebNu1OKSnXM/edit#gid=0') %>%
+primers <- gsheet::gsheet2tbl('https://docs.google.com/spreadsheets/d/1LJFZZ4dZm9KnoTpZqwCkQiXAKuD4Q4IGebNu1OKSnXM/edit#gid=0') %>%
     dplyr::mutate(pos = `Physical Position` / 1e6,
                   pair = paste0(`Left primer`, "-", `Right primer`),
                   pair2 = paste0(`Right primer`, "-", `Left primer`))
@@ -174,14 +174,14 @@ region <- "V:5260997-5906132"
 # }    
 
 # update with "better" eQTL info?
-query_genes <- function(region, GO = NULL, strain = "CB4856") {
+query_genes <- function(region, GO = NULL, strain = "CB4856", v = "~/Dropbox/Andersenlab/Reagents/WormReagents/_SEQ/WI/WI-20170531/vcf/WI.20170531.snpeff.vcf.gz") {
     
     # filter eqtl to > 5% VE
     eqtlmap2 <- eqtlmap %>%
         dplyr::filter(var_exp >= 0.05)
     
     # how many genes are in the interval?
-    all_genes <- cegwas2::query_vcf(region, impact = "ALL", samples = strain)
+    all_genes <- cegwas2::query_vcf(region, impact = "ALL", samples = strain, vcf = v)
     print(glue::glue("There are {length(unique(all_genes$gene_id))} genes in the interval {region}"))
     
     # how many eQTL map to this region?
