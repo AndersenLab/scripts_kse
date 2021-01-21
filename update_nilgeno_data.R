@@ -22,8 +22,8 @@ nilgeno7 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/
 nilgeno8 <- data.table::fread("~/Dropbox/AndersenLab/Reagents/WormReagents/_SEQ/NIL/20200323/NIL-N2-CB4856-20200326//hmm/gt_hmm_fill.tsv") %>%
     dplyr::select(-rle)
 
-nilgeno9 <- data.table::fread("~/Dropbox/AndersenLab/LabFolders/Loraina/DrugsandToxins/NILS/gt_hmm_fill.tsv") %>%
-    dplyr::select(-rle)
+nilgeno9 <- data.table::fread("~/Dropbox/AndersenLab/LabFolders/Loraina/DrugsandToxins/NILS/ECA2797/gt_hmm_fill.tsv") %>%
+    dplyr::select(-rle) 
 
 N2_CB_geno <- read.csv("~/Dropbox/AndersenLab/LabFolders/Katie/projects//HTA_sorter/N2_CB_geno.csv")  %>%
     dplyr::mutate(gt_name = ifelse(gt == 1, "N2", "CB4856")) %>%

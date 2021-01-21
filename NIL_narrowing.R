@@ -17,27 +17,6 @@ primers <- gsheet::gsheet2tbl('https://docs.google.com/spreadsheets/d/1LJFZZ4dZm
                   pair = paste0(`Left primer`, "-", `Right primer`),
                   pair2 = paste0(`Right primer`, "-", `Left primer`))
 
-# Define function to show variants between N2/CB within a QTL interval and add gene functions/GO terms
-# query - region of interest (III:1000-700000)
-# sev - vector of severity to include (MODIFIER, LOW, MODERATE, HIGH), default is all
-qtl_narrow <- function(query, sev = c("MODIFIER", "LOW", "MODERATE", "HIGH")) {
-
-    # snpeff <- cegwas::snpeff(query)
-    snpeff <- cegwas2::query_vcf(query, impact = sev, samples = "CB4856")
-    print(paste0("Total genes in interval: ", length(unique(snpeff$gene_id))))
-
-    #Only keep genes that have difference in N2/CB
-    snpf <- snpeff  %>%
-        dplyr::mutate(GT = ifelse(a1 == REF & a2 == REF, "REF", "ALT"))
-
-    #Add GO Terms and descriptions
-    df <- snpf %>%
-        dplyr::select(CHROM, POS, strain = SAMPLE, REF, ALT, a1, a2, GT, query, allele, effect, impact, gene_name, gene_id, feature_type,
-                      feature_id, transcript_biotype, nt_change, aa_change) %>%
-        dplyr::left_join(gene_descriptions, by = c("gene_id" = "wbgene"))
-
-    return(df)
-}
 
 # Look for genes in interval
 # variables
