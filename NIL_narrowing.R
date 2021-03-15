@@ -10,6 +10,7 @@ source("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/NIL_genotype_plots.R"
 load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/gene_annotations.Rda")
 data("eQTLpeaks")
 data("probe_info")
+load("~/Dropbox/AndersenLab/LabFolders/Katie/scripts_kse/nilgeno.Rda")
 
 # load primersprimers
 primers <- gsheet::gsheet2tbl('https://docs.google.com/spreadsheets/d/1LJFZZ4dZm9KnoTpZqwCkQiXAKuD4Q4IGebNu1OKSnXM/edit#gid=0') %>%
@@ -281,23 +282,24 @@ plot_primers <- function(primer_pairs, NIL = "N2", RIL = F, chr = c("I", "II", "
         dplyr::filter(sample %in% NIL) %>%
         dplyr::filter(chrom %in% chr) %>%
         dplyr::mutate(gt = as.character(gt)) %>%
-        ggplot(.)+
-        geom_segment(aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt, size = 2))+
-        facet_grid(~chrom, scales = "free",  space = "free")+
-        scale_color_manual(values=c("1"="orange","2"="blue"))+
-        theme_bw() +
-        theme(axis.text.x = element_text(size=12, face="bold", color="black"),
-              axis.text.y = element_text(size=12, face="bold", color="black"),
-              axis.title.x = element_text(size=14, face="bold", color="black"),
-              axis.title.y = element_text(size=14, face="bold", color="black"),
-              strip.text = element_text(size = 12, face = "bold", color = "black"),
-              plot.title = element_text(size=24, face="bold"),
-              legend.position = "none",
-              panel.grid.minor = element_blank(),
-              panel.grid.major = element_blank())+
-        labs(x = "Genomic Position (Mb)", y = "") +
-        geom_vline(data = data.frame(pos = primer_positions$pos, chrom = primer_positions$Chromosome), aes(xintercept = pos)) +
-        geom_text(data = data.frame(pos = primer_positions$pos, 
+        ggplot2::ggplot(.)+
+        ggplot2::geom_segment(ggplot2::aes(x = start/1e6, y = sample, xend = end/1e6, yend = sample, color = gt, size = 2))+
+        ggplot2::facet_grid(~chrom, scales = "free",  space = "free")+
+        ggplot2::scale_color_manual(values=c("1"="orange","2"="blue"))+
+        ggplot2::theme_bw() +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(size=12, face="bold", color="black"),
+                       axis.text.y = ggplot2::element_text(size=12, face="bold", color="black"),
+                       axis.title.x = ggplot2::element_text(size=14, face="bold", color="black"),
+                       axis.title.y = ggplot2::element_text(size=14, face="bold", color="black"),
+                       strip.text = ggplot2::element_text(size = 12, face = "bold", color = "black"),
+                       plot.title = ggplot2::element_text(size=24, face="bold"),
+                       legend.position = "none",
+                       panel.grid.minor = ggplot2::element_blank(),
+                       panel.grid.major = ggplot2::element_blank())+
+        ggplot2::labs(x = "Genomic Position (Mb)", y = "") +
+        ggplot2::geom_vline(data = data.frame(pos = primer_positions$pos, chrom = primer_positions$Chromosome), 
+                            ggplot2::aes(xintercept = pos)) +
+        ggplot2::geom_text(data = data.frame(pos = primer_positions$pos, 
                                     chrom = primer_positions$Chromosome, 
                                     strain = NIL[length(NIL)],
                                     primers = primer_positions$pair), aes(x = pos,y = strain, label = primers), 
@@ -305,6 +307,10 @@ plot_primers <- function(primer_pairs, NIL = "N2", RIL = F, chr = c("I", "II", "
                   hjust = -0.1,
                   vjust = -0.5)
 }
+
+# plot_primers(c("oECA799-oECA800",
+#                "oECA745-oECA746"), NIL = "ECA232", chr = "V")
+
 
 # function to estimate the genetic position from a physical genomic position
 # input: chr = chromosome ("I", "II", "III", "IV", "V", or "X")
